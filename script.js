@@ -72,6 +72,9 @@ function renderNERResult(nerResult) {
     editableDiv.contentEditable = 'true';
     editableDiv.className = 'annotated-text';
 
+    // 添加选择文本事件监听
+    editableDiv.addEventListener('mouseup', handleTextSelection);
+
     let text = document.getElementById('text-area').value;
     const categories = ['人名', '地名', '时间', '职官', '书名'];
     
@@ -132,18 +135,48 @@ function handleEntityClick(element) {
     menu.style.borderRadius = '5px';
     menu.style.zIndex = '1000';
 
-    menu.innerHTML = `
-        <button onclick="editEntity('${entityText}', '${currentCategory}', this)">编辑</button>
-        <button onclick="deleteEntity(this)">删除</button>
-        <button onclick="reclassifyEntity('${entityText}', this)">重新分类</button>
+    // 修改菜单按钮的事件处理方式
+    const menuButtons = `
+        <button onclick="editEntity('${entityText}', '${currentCategory}', this.parentElement)">编辑</button>
+        <button onclick="handleEntityDelete('${entityText}', '${currentCategory}', this)">删除</button>
+        <button onclick="reclassifyEntity('${entityText}', this.parentElement)">重新分类</button>
     `;
 
+    menu.innerHTML = menuButtons;
     document.body.querySelectorAll('.entity-menu').forEach(el => el.remove());
     menu.classList.add('entity-menu');
     document.body.appendChild(menu);
 
     document.body.addEventListener('click', () => menu.remove(), { once: true });
     event.stopPropagation();
+}
+
+// 添加新的处理函数
+function handleEntityDelete(entityText, category, button) {
+    // 移除菜单
+    const menu = button.closest('.entity-menu');
+    if (menu) {
+        menu.remove();
+    }
+
+    // 从文本中删除对应的标注
+    const editableDiv = document.getElementById('editable-result');
+    const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
+    spans.forEach(span => {
+        if (span.textContent === entityText) {
+            const textNode = document.createTextNode(span.textContent);
+            span.parentNode.replaceChild(textNode, span);
+        }
+    });
+
+    // 更新侧边栏的实体统计
+    updateSidebarEntities();
+
+    // 如果知识图谱正在显示，则更新图谱
+    const graphContainer = document.getElementById('knowledge-graph');
+    if (graphContainer.style.display === 'block') {
+        showKnowledgeGraph();
+    }
 }
 
 // 关系标注相关函数
@@ -231,7 +264,7 @@ function deleteRelation(button) {
     }
 }
 
-// 知识图谱相���函数
+// 知识图谱相关函数
 async function showKnowledgeGraph() {
     // 显示加载动画
     document.getElementById('loading-spinner').style.display = 'block';
@@ -457,22 +490,30 @@ function toggleButtons(disable) {
 function updateSidebarEntities() {
     const categories = ['人名', '地名', '时间', '职官', '书名'];
     const entities = {};
+    const counts = {};
 
+    // 初始化计数器
     categories.forEach(category => {
         entities[category] = new Set();
+        counts[category] = 0;
     });
 
+    // 统计每个类别的实体数量
     document.querySelectorAll('[data-category]').forEach(element => {
         const category = element.getAttribute('data-category');
         const text = element.textContent;
         if (categories.includes(category)) {
             entities[category].add(text);
+            counts[category]++;
         }
     });
 
+    // 更新侧边栏显示
     document.getElementById('sidebar-content').innerHTML = categories.map(category => `
         <div class="entity-group">
-            <div class="entity-group-title">${category}</div>
+            <div class="entity-group-title">
+                ${category} (共${counts[category]}个)
+            </div>
             ${Array.from(entities[category]).map(entity => `
                 <div class="entity-item">
                     <span class="${getHighlightClass(category)}">${entity}</span>
@@ -560,4 +601,136 @@ document.addEventListener('DOMContentLoaded', function() {
             showRelationAnnotation();
         }
     };
-}); 
+});
+
+// 添加处理文本选择的函数
+function handleTextSelection() {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    
+    if (selectedText) {
+        // 获取选择的范围
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        // 为选中的文本添加背景色
+        const span = document.createElement('span');
+        span.style.backgroundColor = '#e6f3ff'; // 浅蓝色背景
+        range.surroundContents(span);
+        
+        // 创建标注选项菜单
+        showEntityMenu(rect.left, rect.bottom, selectedText, range);
+        
+        // 当菜单关闭时移除背景色
+        document.addEventListener('mousedown', function removeHighlight(e) {
+            const menu = document.querySelector('.entity-selection-menu');
+            if (!menu || !menu.contains(e.target)) {
+                // 如果没有进行实体标注，则恢复原始文本
+                if (span.getAttribute('data-category') === null) {
+                    const text = span.textContent;
+                    span.parentNode.replaceChild(document.createTextNode(text), span);
+                }
+                document.removeEventListener('mousedown', removeHighlight);
+            }
+        });
+    }
+}
+
+function showEntityMenu(x, y, selectedText, range) {
+    // 移除已存在的菜单
+    const existingMenu = document.querySelector('.entity-selection-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+
+    // 创建菜单
+    const menu = document.createElement('div');
+    menu.className = 'entity-selection-menu';
+    menu.style.position = 'fixed';
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.zIndex = '1000';
+    menu.style.background = 'white';
+    menu.style.border = '1px solid #ccc';
+    menu.style.borderRadius = '4px';
+    menu.style.padding = '5px';
+    menu.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+
+    // 添加标注选项
+    const entities = ['人名', '地名', '时间', '职官', '书名'];
+    entities.forEach(entity => {
+        const button = document.createElement('button');
+        button.textContent = entity;
+        button.style.display = 'block';
+        button.style.width = '100%';
+        button.style.padding = '5px 10px';
+        button.style.margin = '2px 0';
+        button.style.border = 'none';
+        button.style.background = 'none';
+        button.style.cursor = 'pointer';
+        
+        button.onmouseover = () => button.style.background = '#f0f0f0';
+        button.onmouseout = () => button.style.background = 'none';
+        
+        button.onclick = () => {
+            annotateSelection(range, entity);
+            menu.remove();
+        };
+        
+        menu.appendChild(button);
+    });
+
+    document.body.appendChild(menu);
+
+    // 点击其他地方关闭菜单
+    document.addEventListener('mousedown', function closeMenu(e) {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('mousedown', closeMenu);
+        }
+    });
+}
+
+function annotateSelection(range, category) {
+    const span = document.createElement('span');
+    span.className = getHighlightClass(category);
+    span.setAttribute('data-category', category);
+    
+    // 将选中的内容移动到新的span中
+    range.surroundContents(span);
+    
+    // 添加点击事件
+    span.addEventListener('click', function(event) {
+        handleEntityClick(this);
+        event.stopPropagation();
+    });
+    
+    // 更新侧边栏
+    updateSidebarEntities();
+}
+
+function deleteEntityFromList(button, entityText, category) {
+    // 从侧边栏中删除实体项
+    const entityItem = button.closest('.entity-item');
+    entityItem.remove();
+
+    // 从文本中删除对应的标注
+    const editableDiv = document.getElementById('editable-result');
+    const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
+    spans.forEach(span => {
+        if (span.textContent === entityText) {
+            // 保留文本内容，但移除标注
+            const textNode = document.createTextNode(span.textContent);
+            span.parentNode.replaceChild(textNode, span);
+        }
+    });
+
+    // 更新侧边栏的实体统计
+    updateSidebarEntities();
+
+    // 如果知识图谱正在显示，则更新图谱
+    const graphContainer = document.getElementById('knowledge-graph');
+    if (graphContainer.style.display === 'block') {
+        showKnowledgeGraph();
+    }
+} 
