@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吾与点智能标注平台</title>
+    <link rel="stylesheet" href="styles.css">
+  
+</head>
+
+<body>
+    <header>
+        <div class="logo">吾与点 智能标注平台</div>
+        <div class="document-management"><span><b>文档管理</b></span></div>
+    </header>
+
+    <div class="container">
+        <div class="header">
+        
+            <h2>项目管理</h2>
+            <button class="button" id="openModal">+ 新建项目</button>
+        </div>
+    </div>
+
+    <div class="new-fullscreen-div" id="projectContainer">
+        <div class="document-list" id="documentList">
+            <!-- 文档列表将会在这里生成 -->
+        </div>
+    </div>
+
+    <div class="modal" id="myModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>新建项目</h3>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            <div class="input-group">
+                <label for="projectName">项目名称 <span style="color: red;">*</span></label>
+                <input type="text" id="projectName" required>
+            </div>
+            <div class="input-group">
+                <label for="projectDescription">项目描述</label>
+                <textarea id="projectDescription" rows="4"></textarea>
+            </div>
+            <div style="text-align: right;">
+                <button class="button" id="cancelButton"
+                    style="background-color:#fff;color: #707276; border: 0.5px solid gray; margin-right: 10px;">取消</button>
+                <button class="button" id="createProjectButton">新建项目</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="updateModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>项目详细信息</h3>
+                <span class="close" id="closeUpdateModal">&times;</span>
+            </div>
+            <div class="input-group">
+                <label for="updateProjectName">项目名称</label>
+                <input type="text" id="updateProjectName" class="readonly" disabled>
+            </div>
+            <div class="input-group">
+                <label for="updateProjectDescription">项目描述</label>
+                <textarea id="updateProjectDescription" rows="4"></textarea>
+            </div>
+            <div class="input-group">
+                <label for="createTime">项目创建时间</label>
+                <input type="text" id="createTime" class="readonly" disabled>
+            </div>
+            <div class="input-group">
+                <label for="updateTime">项目更新时间</label>
+                <input type="text" id="updateTime" class="readonly" disabled>
+            </div>
+            <div style="text-align: right;">
+                <button class="button" id="shipButton"
+                    style="background-color:#fff;color: #707276; border: 0.5px solid gray; margin-right: 10px;">返回</button>
+                <button class="button" id="updateProjectButton">更新项目详细</button>
+            </div>
+        </div>
+    </div>
+    
+
+    <script>
+     const openModalButton = document.getElementById('openModal');
+const modal = document.getElementById('myModal');
+const closeModalButton = document.getElementById('closeModal');
+const cancelButton = document.getElementById('cancelButton');
+const createProjectButton = document.getElementById('createProjectButton');
+const documentList = document.getElementById('documentList');
+const updateModal = document.getElementById('updateModal');
+const closeUpdateModal = document.getElementById('closeUpdateModal');
+
+// 点击“+新建项目”按钮时显示新建项目模态框
+openModalButton.onclick = () => {
+    modal.style.display = 'flex';
+};
+
+// 点击关闭按钮时隐藏新建项目模态框
+closeModalButton.onclick = () => {
+    modal.style.display = 'none';
+};
+
+// 点击“返回”按钮时隐藏更新项目详细模态框
+document.getElementById('shipButton').onclick = () => {
+    updateModal.style.display = 'none';
+};
+
+// 点击关闭按钮时隐藏更新项目详细模态框
+closeUpdateModal.onclick = () => {
+    updateModal.style.display = 'none';
+};
+
+// 点击取消按钮时隐藏新建项目模态框
+cancelButton.onclick = () => {
+    modal.style.display = 'none';
+};
+
+// 点击创建项目按钮时创建项目
+createProjectButton.onclick = () => {
+    const projectName = document.getElementById('projectName').value;
+    const projectDescription = document.getElementById('projectDescription').value;
+    const timestamp = new Date().toLocaleString();
+
+    const documentItem = document.createElement('div');
+    documentItem.className = 'document-item';
+    documentItem.innerHTML = `
+        <div class="details">
+<a href="project.html" class="name" style="text-decoration: none; color: inherit;">
+    <b>${projectName}</b>
+</a>
+            <span class="timestamp">${timestamp}</span>
+        </div>
+        <button class="open-button">打开项目</button>
+        <button class="xijie-button" 
+            style="background-color: #fff; color: #606266; border: 0.5px solid gray;" 
+            onclick="showUpdateModal('${projectName}', '${projectDescription}', '${timestamp}')">
+            项目详细
+        </button>
+        <button class="delete-button" onclick="deleteProject(this)">删除项目</button>
+    `;
+    documentList.appendChild(documentItem);
+    modal.style.display = 'none'; // 关闭模态框
+
+    // 清空输入框
+    document.getElementById('projectName').value = '';
+    document.getElementById('projectDescription').value = '';
+};
+
+// 显示项目详细模态框
+function showUpdateModal(name, description, createTime) {
+    document.getElementById('updateProjectName').value = name;
+    document.getElementById('updateProjectDescription').value = description;
+    document.getElementById('createTime').value = createTime;
+    document.getElementById('updateTime').value = new Date().toLocaleString(); // 显示当前时间为更新时间
+    updateModal.style.display = 'flex'; // 显示更新模态框
+}
+
+// 删除项目
+function deleteProject(button) {
+    const documentItem = button.parentElement; // 获取到包含按钮的整个项目元素
+    documentList.removeChild(documentItem); // 从文档中移除该项目元素
+}
+
+    </script>
+</body>
+
+</html>
