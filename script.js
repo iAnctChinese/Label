@@ -3,12 +3,33 @@ let relations = [];
 // 添加实体缓存
 let entityCache = null;
 
+// 添加全局变量用于保存各种状态
+let originalText = ''; // 保存text-area中输入的原始文本(保留格式)
+let annotatedText = ''; // 保存实体标注后的文本
+let entityData = {     // 保存所有实体信息
+    '人名': [],
+    '地名': [],
+    '时间': [],
+    '职官': [],
+    '书名': []
+};
+let relationData = []; // 保存所有关系信息 [{source: '', relation: '', target: ''}, ...]
+
 // 基础功能
 function updateWordCount() {
-    clearCache();
     const text = document.getElementById('text-area').value;
-    const wordCount = text.length;
-    document.getElementById('word-count').innerText = `已输入 ${wordCount} 字`;
+    // 获取当前文本并保留原始格式
+    const currentText = text;
+    originalText = currentText; // 保存包含格式的原始文本
+    // 去除空格和回车后进行比较
+    const cleanCurrentText = currentText.replace(/[\s\n]/g, '');
+    const cleanOriginalText = originalText.replace(/[\s\n]/g, '');
+    
+    // 如果文本发生改变，清除缓存并更新originalText
+    if (cleanCurrentText !== cleanOriginalText) {
+        clearCache();
+    }
+    document.getElementById('word-count').innerText = `已输入 ${cleanCurrentText.length} 字`;
 }
 
 function copyText() {
@@ -37,16 +58,15 @@ function pasteText() {
 
 // 实体标注相关函数
 async function performNER() {
-    // 如果有缓存且文本没有改变，直接使用缓存
-    const currentText = document.getElementById('text-area').value;
-    if (entityCache && entityCache.text === currentText) {
+    // 如果有缓存，直接使用缓存
+    if (entityCache) {
         renderNERResult(entityCache.entities);
         updateSidebarEntities();
         return;
     }
 
-    const text = document.getElementById('text-area').value;
-    if (!text.trim()) {
+    // 检查originalText是否为空
+    if (!originalText.trim()) {
         alert('请输入文本进行实体识别');
         return;
     }
@@ -58,7 +78,7 @@ async function performNER() {
         const response = await fetch('http://localhost:5000/ner', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ text: originalText }), // 使用originalText
         });
 
         if (!response.ok) {
@@ -68,7 +88,7 @@ async function performNER() {
         const data = await response.json();
         // 更新缓存
         entityCache = {
-            text: currentText,
+            text: originalText,
             entities: data.entities
         };
         renderNERResult(data.entities);
@@ -88,23 +108,26 @@ function renderNERResult(nerResult) {
     editableDiv.contentEditable = 'true';
     editableDiv.className = 'annotated-text';
 
-    // 添加选择文本事件监听
     enableTextSelection(editableDiv);
 
-    let text = document.getElementById('text-area').value;
+    let text = originalText; // 使用保存的原始文本
     
-    // 创建一个临时的div来存储HTML，并保持原始格式
     const tempDiv = document.createElement('div');
-    // 使用white-space: pre-wrap保持原始格式
     tempDiv.style.whiteSpace = 'pre-wrap';
     tempDiv.textContent = text;
     
-    const categories = ['人名', '地名', '时间', '职官', '书名'];
+    // 更新entityData
+    entityData = {
+        '人名': nerResult['人名'] || [],
+        '地名': nerResult['地名'] || [],
+        '时间': nerResult['时间'] || [],
+        '职官': nerResult['职官'] || [],
+        '书名': nerResult['书名'] || []
+    };
     
     // 按长度排序实体，优先替换较长的实体
     const allEntities = [];
-    categories.forEach(category => {
-        const entities = nerResult[category] || [];
+    Object.entries(entityData).forEach(([category, entities]) => {
         entities.forEach(entity => {
             allEntities.push({
                 text: entity,
@@ -126,6 +149,7 @@ function renderNERResult(nerResult) {
     });
     
     editableDiv.innerHTML = tempDiv.innerHTML;
+    annotatedText = editableDiv.innerHTML; // 保存标注后的文本
     
     // 为所有span添加点击事件
     editableDiv.querySelectorAll('span[data-category]').forEach(span => {
@@ -242,17 +266,13 @@ async function extractRelations() {
     }
 
     const currentText = editableDiv.innerText;
-    const currentEntities = {};
-    ['人名', '地名', '时间', '职官', '书名'].forEach(category => {
-        currentEntities[category] = Array.from(
-            editableDiv.querySelectorAll(`[data-category="${category}"]`)
-        ).map(el => el.textContent);
-    });
+    const currentEntities = {...entityData}; // 使用保存的实体数据
 
     // 检查缓存是否有效
     if (relationCache.text === currentText && 
         JSON.stringify(relationCache.entities) === JSON.stringify(currentEntities)) {
         relations = relationCache.relations;
+        relationData = [...relations]; // 更新relationData
         return;
     }
 
@@ -269,6 +289,8 @@ async function extractRelations() {
 
         const data = await response.json();
         relations = data.relations;
+        relationData = [...relations]; // 更新relationData
+        
         // 更新缓存
         relationCache = {
             text: currentText,
@@ -277,7 +299,7 @@ async function extractRelations() {
         };
     } catch (error) {
         console.error('关系抽取错误:', error);
-        throw error; // 向上传递错误，让调用函数处理
+        throw error;
     }
 }
 
@@ -319,11 +341,11 @@ async function showRelationAnnotation() {
 // 添加删除关系的函数
 function deleteRelation(button) {
     const relationItem = button.closest('.relation-item');
-    const index = Array.from(relationItem.parentElement.children).indexOf(relationItem) - 1; // -1 因为标题也算一个子元素
+    const index = Array.from(relationItem.parentElement.children).indexOf(relationItem) - 1;
     relations.splice(index, 1);
+    relationData = [...relations]; // 更新relationData
     showRelationAnnotation();
 
-    // 如果知识图谱正在显示，则更新图谱
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer.style.display === 'block') {
         showKnowledgeGraph();
@@ -493,7 +515,7 @@ async function showKnowledgeGraph() {
         
     } catch (error) {
         console.error('知识图谱生成错误:', error);
-        alert('知识图谱生成失败，请稍后重试');
+        alert('知识图生成失败，请稍后重试');
         const graphContainer = document.getElementById('knowledge-graph');
         graphContainer.style.display = 'none';
         // 显示回本编辑区域
@@ -618,16 +640,11 @@ function exportAllData() {
     }
 
     const exportData = {
-        text: editableDiv.innerText,
-        entities: {},
-        relations: relations
+        originalText: originalText,
+        annotatedText: annotatedText,
+        entities: entityData,
+        relations: relationData
     };
-
-    ['人名', '地名', '时间', '职官', '书名'].forEach(category => {
-        exportData.entities[category] = Array.from(
-            editableDiv.querySelectorAll(`[data-category="${category}"]`)
-        ).map(el => el.textContent);
-    });
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -851,18 +868,26 @@ function deleteEntityFromList(button, entityText, category) {
     const entityItem = button.closest('.entity-item');
     entityItem.remove();
 
+    // 从entityData中删除实体
+    const index = entityData[category].indexOf(entityText);
+    if (index > -1) {
+        entityData[category].splice(index, 1);
+    }
+
     // 从文本中删除对应的标注
     const editableDiv = document.getElementById('editable-result');
     const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
     spans.forEach(span => {
         if (span.textContent === entityText) {
-            // 保留文本内容，但移除标注
             const textNode = document.createTextNode(span.textContent);
             span.parentNode.replaceChild(textNode, span);
         }
     });
 
-    // 更新侧边栏的实体统计
+    // 更新annotatedText
+    annotatedText = editableDiv.innerHTML;
+
+    // 更新侧边栏
     updateSidebarEntities();
 
     // 如果知识图谱正在显示，则更新图谱
