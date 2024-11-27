@@ -6,19 +6,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能标注平台</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="./imges/logo.png" type="image/png">
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script src="script.js" defer></script>
 </head>
 
 <body>
     <header>
-        <div class="logo">智能标注平台</div>
+        <div class="logo">
+            <img src="./imges/logo.png" alt="logo" class="logo-image">
+            <span>智能标注平台</span>
+        </div>
         <div class="document-management">
-            <span class="nav-button"><b>结构标注</b></span>
-            <span class="nav-button" onclick="performNER()">实体标注</span>
-            <span class="nav-button" onclick="showRelationAnnotation()">关系标注</span>
-            <span class="nav-button" onclick="showKnowledgeGraph()">知识图谱</span>
-            <span class="nav-button" onclick="exportAllData()">导出数据</span>
+            <span class="nav-button active">
+                <img src="./imges/结构标注.png" alt="结构" class="nav-icon">
+                结构标注
+            </span>
+            <span class="nav-button">
+                <img src="./imges/实体标注.png" alt="实体" class="nav-icon">
+                实体标注
+            </span>
+            <span class="nav-button">
+                <img src="./imges/关系标注.png" alt="关系" class="nav-icon">
+                关系标注
+            </span>
+            <span class="nav-button">
+                <img src="./imges/知识图谱.png" alt="图谱" class="nav-icon">
+                知识图谱
+            </span>
+            <span class="nav-button">
+                <img src="./imges/导出数据.png" alt="导出" class="nav-icon">
+                导出数据
+            </span>
         </div>
     </header>
 

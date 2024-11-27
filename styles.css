@@ -25,8 +25,20 @@ header {
 }
 
 .logo {
-    margin-left: 60px;
+    margin-left: 20px;
     flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-image {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.logo span {
     font-size: 18px;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -88,6 +100,8 @@ header {
     background: white;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     overflow-y: auto;
+    white-space: pre-wrap;  /* 保持原始格式 */
+    word-wrap: break-word;  /* 确保长单词会换行 */
 }
 
 /* 添加标注动画效果 */
@@ -192,7 +206,9 @@ header {
 }
 
 .nav-button {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background-color: rgba(65, 70, 110, 0.9);
     color: white;
     padding: 8px 16px;
@@ -203,21 +219,29 @@ header {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     font-size: 15px;
-    font-weight: 500;
+    font-weight: normal;
     letter-spacing: 0.3px;
 }
 
-.nav-button:hover {
+.nav-button.active {
+    font-weight: bold;
     background-color: rgba(65, 70, 110, 1);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    opacity: 0.9;
 }
 
 .sidebar {
     position: fixed;
     left: 0;
     top: 80px;
-    width: 250px;
+    width: 300px;
     height: calc(100vh - 80px);
     background: rgba(255, 255, 255, 0.95);
     border-right: 1px solid #e1e1e1;
@@ -261,9 +285,10 @@ header {
     margin-bottom: 6px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease;
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 12px;
+    line-height: 1.4;
     letter-spacing: 0.2px;
+    gap: 4px;
 }
 
 .entity-item:hover, .relation-item:hover {
@@ -281,26 +306,21 @@ header {
     font-weight: 500;
     letter-spacing: 0.2px;
     cursor: pointer;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.2s ease;
 }
 
-.entity-item:hover .delete-btn,
-.relation-item:hover .delete-btn {
-    opacity: 1;
-}
-
 .container {
-    margin-left: 250px;
-    width: calc(100% - 280px);
+    margin-left: 300px;
+    width: calc(100% - 330px);
     padding: 15px;
     transition: all 0.3s ease;
 }
 
 #knowledge-graph {
     position: relative;
-    margin-left: 250px;
-    width: calc(100% - 250px);
+    margin-left: 300px;
+    width: calc(100% - 300px);
     height: calc(100vh - 80px);
     background: white;
     border: none;
@@ -341,6 +361,8 @@ header {
     box-sizing: border-box;
     background: white;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    white-space: pre-wrap;  /* 保持原始格式 */
+    word-wrap: break-word;  /* 确保长单词会换行 */
 }
 
 .text-area:hover, #editable-result:hover {
@@ -401,32 +423,148 @@ header {
     cursor: pointer;
 }
 
-/* 添加知识图谱缩放控制样式 */
+/* 修改知识图谱缩放控制样式 */
 .zoom-controls {
     position: absolute;
     bottom: 20px;
     right: 20px;
     background: white;
-    padding: 10px;
+    padding: 8px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     z-index: 1000;
+    display: flex;
+    gap: 4px;
 }
 
 .zoom-controls button {
-    width: 30px;
-    height: 30px;
-    margin: 0 5px;
     border: 1px solid #41466E;
     border-radius: 4px;
     background: white;
     color: #41466E;
-    font-size: 16px;
+    font-size: 12px;
+    line-height: 1;
     cursor: pointer;
     transition: all 0.2s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 为+/-按钮设置固定尺寸 */
+.zoom-controls button:not(:last-child) {
+    width: 26px;
+    height: 26px;
+}
+
+/* 为重置按钮设置特殊样式 */
+.zoom-controls button:last-child {
+    width: auto;     /* 自动宽度适应文本 */
+    height: 26px;    /* 保持相同高度 */
+    padding: 0 8px;  /* 添加水平内边距 */
+    white-space: nowrap; /* 防止文字换行 */
 }
 
 .zoom-controls button:hover {
     background: #41466E;
     color: white;
+}
+
+.entity-selection-menu {
+    min-width: 120px;
+}
+
+.entity-menu-item {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s ease;
+}
+
+.entity-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+.entity-menu-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-mark {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+/* 为每种实体类型的颜色标记设置背景色 */
+.color-mark.highlight-PER {
+    background: rgba(255,204,203,1);
+}
+
+.color-mark.highlight-LOC {
+    background: rgba(204,255,204,1);
+}
+
+.color-mark.highlight-ORG {
+    background: rgba(204,204,255,1);
+}
+
+.color-mark.highlight-MISC {
+    background: rgba(255,235,204,1);
+}
+
+/* 添加实体菜单样式 */
+.entity-menu {
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    padding: 5px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+.entity-menu button {
+    display: block;
+    width: 100%;
+    padding: 5px 10px;
+    margin: 2px 0;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+    transition: background-color 0.2s ease;
+}
+
+.entity-menu button:hover {
+    background-color: #f5f5f5;
+}
+
+.entity-count {
+    font-size: 12px;
+    color: #666;
+    margin-left: 8px;
+}
+
+.entity-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    font-size: 12px;
+    line-height: 1.4;
+    letter-spacing: 0.2px;
+    gap: 4px;
 }
