@@ -20,7 +20,7 @@ function updateWordCount() {
     const text = document.getElementById('text-area').value;
     // 获取当前文本并保留原始格式
     const currentText = text;
-    originalText = currentText; // 保存包含格式的原始文本
+    
     // 去除空格和回车后进行比较
     const cleanCurrentText = currentText.replace(/[\s\n]/g, '');
     const cleanOriginalText = originalText.replace(/[\s\n]/g, '');
@@ -28,6 +28,7 @@ function updateWordCount() {
     // 如果文本发生改变，清除缓存并更新originalText
     if (cleanCurrentText !== cleanOriginalText) {
         clearCache();
+        originalText = currentText; // 保存包含格式的原始文本
     }
     document.getElementById('word-count').innerText = `已输入 ${cleanCurrentText.length} 字`;
 }
@@ -372,6 +373,23 @@ async function showKnowledgeGraph() {
             await extractRelations();
         }
 
+        // 更新侧边栏显示关系列表
+        document.getElementById('sidebar-content').innerHTML = `
+            <div class="relation-list">
+                <div class="entity-group-title">关系实例</div>
+                ${relations.map(rel => `
+                    <div class="relation-item">
+                        <span>${rel.source}</span>
+                        <span style="margin: 0 8px">→</span>
+                        <span>${rel.relation}</span>
+                        <span style="margin: 0 8px">→</span>
+                        <span>${rel.target}</span>
+                        <button class="delete-btn" onclick="deleteRelation(this)">删除</button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
         const nodes = new Set();
         relations.forEach(rel => {
             nodes.add(rel.source);
@@ -518,7 +536,7 @@ async function showKnowledgeGraph() {
         alert('知识图生成失败，请稍后重试');
         const graphContainer = document.getElementById('knowledge-graph');
         graphContainer.style.display = 'none';
-        // 显示回本编辑区域
+        // 显示回文本编辑区域
         const container = document.querySelector('.container');
         container.style.display = 'block';
     } finally {

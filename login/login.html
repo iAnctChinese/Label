@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 智能标注平台</title>
+    <link rel="stylesheet" href="login.css">
+    <link rel="icon" href="../imges/logo.png" type="image/png">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <img src="../imges/logo.png" alt="logo" class="auth-logo">
+            <h2 class="auth-title">智能标注平台</h2>
+        </div>
+        <form id="login-form" onsubmit="return handleLogin(event)">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group captcha-group">
+                <label for="captcha">验证码</label>
+                <div class="captcha-input-container">
+                    <div class="captcha-input">
+                        <input type="text" id="captcha" name="captcha" maxlength="4" required>
+                    </div>
+                    <div class="captcha-container">
+                        <div class="captcha-code" id="captchaCode"></div>
+                        <span class="captcha-refresh" onclick="refreshCaptcha()">看不清？换一个</span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-options">
+                <label class="remember-me">
+                    <input type="checkbox" id="remember" name="remember">
+                    <span>记住我</span>
+                </label>
+                <a href="#" class="forgot-password">忘记密码？</a>
+            </div>
+            <button type="submit" class="auth-button">登录</button>
+        </form>
+        <div class="auth-link">
+            <span>还没有账号？</span>
+            <a href="register.html">立即注册</a>
+        </div>
+    </div>
+    <script src="login.js"></script>
+    <script>
+    let captchaValue = '';
+
+    function generateCaptcha() {
+        return Math.floor(1000 + Math.random() * 9000).toString();
+    }
+
+    function refreshCaptcha() {
+        captchaValue = generateCaptcha();
+        document.getElementById('captchaCode').textContent = captchaValue;
+    }
+
+    function handleLogin(event) {
+        event.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const captchaInput = document.getElementById('captcha').value;
+        
+        if (captchaInput !== captchaValue) {
+            alert('验证码错误，请重新输入');
+            refreshCaptcha();
+            document.getElementById('captcha').value = '';
+            return false;
+        }
+        
+        // TODO: 在这里添加登录逻辑
+        console.log('登录信息:', { username, password });
+        return false;
+    }
+
+    // 页面加载时生成验证码
+    document.addEventListener('DOMContentLoaded', refreshCaptcha);
+    </script>
+</body>
+</html>
