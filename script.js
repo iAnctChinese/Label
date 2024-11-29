@@ -15,6 +15,9 @@ let entityData = {     // 保存所有实体信息
 };
 let relationData = []; // 保存所有关系信息 [{source: '', relation: '', target: ''}, ...]
 
+// 添加全局变量来存储实体类型
+let entityTypes = ['人名', '地名', '时间', '职官', '书名'];
+
 // 基础功能
 function updateWordCount() {
     const text = document.getElementById('text-area').value;
@@ -69,6 +72,11 @@ async function performNER() {
     // 检查originalText是否为空
     if (!originalText.trim()) {
         alert('请输入文本进行实体识别');
+        // 恢复到结构标注按钮的高亮状态
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.nav-button:first-child').classList.add('active');
         return;
     }
 
@@ -97,6 +105,12 @@ async function performNER() {
     } catch (error) {
         console.error('识别出错:', error);
         alert('识别过程中出错，请稍后重试');
+        
+        // 恢复到结构标注按钮的高亮状态
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.nav-button:first-child').classList.add('active');
     } finally {
         document.getElementById('loading-spinner').style.display = 'none';
         toggleButtons(false);
@@ -152,12 +166,19 @@ function renderNERResult(nerResult) {
     editableDiv.innerHTML = tempDiv.innerHTML;
     annotatedText = editableDiv.innerHTML; // 保存标注后的文本
     
-    // 为所有span添加点击事件
+    // 为所有span添加右键点击事件
     editableDiv.querySelectorAll('span[data-category]').forEach(span => {
-        span.addEventListener('click', function(event) {
+        // 保持现有的右键点击事件
+        span.addEventListener('contextmenu', function(event) {
             handleEntityClick(this);
-            event.stopPropagation();
+            event.preventDefault();
         });
+
+        // 如果之前有状态，恢复状态
+        const existingSpan = document.querySelector(`span[data-category="${span.getAttribute('data-category')}"][data-status]`);
+        if (existingSpan && existingSpan.textContent === span.textContent) {
+            span.setAttribute('data-status', existingSpan.getAttribute('data-status'));
+        }
     });
 
     document.querySelector('.container').innerHTML = '';
@@ -167,13 +188,17 @@ function renderNERResult(nerResult) {
 let clickedEntity = null; // 添加全局变量来存储被点击的实体元素
 
 function handleEntityClick(element) {
-    // 保存被点击的实体元素
+    event.preventDefault();
+    
+    if (event.button !== 2) {
+        return;
+    }
+    
     clickedEntity = element;
     
-    // 检查当前是否在实体标注模式
     const currentMode = document.querySelector('.nav-button.active').textContent.trim();
     if (!currentMode.includes('实体标注')) {
-        return; // 如果不是实体标注模式，直接返回
+        return;
     }
 
     const entityText = element.innerText;
@@ -185,16 +210,35 @@ function handleEntityClick(element) {
     menu.style.left = `${event.clientX}px`;
 
     const menuButtons = `
-        <button onclick="editEntity('${entityText}', '${currentCategory}', this.parentElement)">编辑</button>
-        <button onclick="handleEntityDelete('${entityText}', '${currentCategory}', this)">取消标注该实体</button>
-        <button onclick="handleDeleteAllSameEntities('${entityText}', '${currentCategory}', this)">取消标注全部相同实体</button>
+        <button class="entity-menu-button">
+            <img src="imges/问号.png" alt="未检查" class="menu-icon">
+            设定实体状态为"未检查"
+        </button>
+        <button class="entity-menu-button">
+            <img src="imges/对号.png" alt="已检查" class="menu-icon">
+            设定实体状态为"已检查"
+        </button>
+        <button class="entity-menu-button">
+            <img src="imges/返回.png" alt="取消" class="menu-icon">
+            取消标注该实体
+        </button>
+        <button class="entity-menu-button">
+            <img src="imges/返回.png" alt="取消全部" class="menu-icon">
+            取消标注全部相同实体
+        </button>
     `;
 
     menu.innerHTML = menuButtons;
     document.body.querySelectorAll('.entity-menu').forEach(el => el.remove());
     document.body.appendChild(menu);
 
-    // 点击其他地方关闭菜单
+    // 为按钮添加点击事件
+    const buttons = menu.querySelectorAll('button');
+    buttons[0].onclick = () => setEntityStatus(entityText, currentCategory, 'unchecked', menu);
+    buttons[1].onclick = () => setEntityStatus(entityText, currentCategory, 'checked', menu);
+    buttons[2].onclick = () => handleEntityDelete(entityText, currentCategory, buttons[2]);
+    buttons[3].onclick = () => handleDeleteAllSameEntities(entityText, currentCategory, buttons[3]);
+
     document.body.addEventListener('click', () => menu.remove(), { once: true });
     event.stopPropagation();
 }
@@ -220,7 +264,7 @@ function handleDeleteAllSameEntities(entityText, category, button) {
     // 更新侧边栏的实体统计
     updateSidebarEntities();
 
-    // 如果知识图谱正在显示，则更新图谱
+    // 如果识图谱正在显示，则更新图谱
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer.style.display === 'block') {
         showKnowledgeGraph();
@@ -263,6 +307,10 @@ async function extractRelations() {
     const editableDiv = document.getElementById('editable-result');
     if (!editableDiv) {
         alert('请先进行实体识别');
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.nav-button:first-child').classList.add('active');
         return;
     }
 
@@ -305,6 +353,17 @@ async function extractRelations() {
 }
 
 async function showRelationAnnotation() {
+    const editableDiv = document.getElementById('editable-result');
+    if (!editableDiv) {
+        alert('请先进行实体识别');
+        // 恢复到实体标注按钮的高亮状态
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.nav-button:first-child').classList.add('active');
+        return;
+    }
+
     // 显示加载动画
     document.getElementById('loading-spinner').style.display = 'block';
     toggleButtons(true);
@@ -324,7 +383,10 @@ async function showRelationAnnotation() {
                         <span>${rel.relation}</span>
                         <span style="margin: 0 8px">→</span>
                         <span>${rel.target}</span>
-                        <button class="delete-btn" onclick="deleteRelation(this)">删除</button>
+                        <img src="imges/删除.png" 
+                             alt="删除" 
+                             class="delete-btn" 
+                             onclick="deleteRelation(this)">
                     </div>
                 `).join('')}
             </div>
@@ -332,6 +394,12 @@ async function showRelationAnnotation() {
     } catch (error) {
         console.error('关系标注错误:', error);
         alert('关系标注失败，请稍后重试');
+        
+        // 恢复到实体标注按钮的高亮状态
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.nav-button:nth-child(2)').classList.add('active');
     } finally {
         // 隐藏加载动画并恢复按钮
         document.getElementById('loading-spinner').style.display = 'none';
@@ -355,6 +423,25 @@ function deleteRelation(button) {
 
 // 知识图谱相关函数
 async function showKnowledgeGraph() {
+    // 检查是否有文本内容
+    const editableDiv = document.getElementById('editable-result');
+    const textArea = document.getElementById('text-area');
+    
+    if ((!editableDiv || !editableDiv.textContent.trim()) && 
+        (!textArea || !textArea.value.trim())) {
+        alert('请先输入文本内容');
+        
+        // 恢复到结构标注页面
+        returnToStructureAnnotation();
+        
+        // 恢复到结构标注按钮的高亮状态
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.nav-button:first-child').classList.add('active');
+        return;
+    }
+
     // 显示加载动画
     document.getElementById('loading-spinner').style.display = 'block';
     toggleButtons(true);
@@ -384,7 +471,10 @@ async function showKnowledgeGraph() {
                         <span>${rel.relation}</span>
                         <span style="margin: 0 8px">→</span>
                         <span>${rel.target}</span>
-                        <button class="delete-btn" onclick="deleteRelation(this)">删除</button>
+                        <img src="imges/删除.png" 
+                             alt="删除" 
+                             class="delete-btn" 
+                             onclick="deleteRelation(this)">
                     </div>
                 `).join('')}
             </div>
@@ -579,7 +669,7 @@ function getHighlightClass(category) {
         '地名': 'highlight-LOC',
         '时间': 'highlight-MISC',
         '职官': 'highlight-ORG',
-        '书名': 'highlight-MISC'
+        '书名': 'highlight-BOOK'
     };
     return highlightClasses[category] || 'highlight-MISC';
 }
@@ -594,60 +684,93 @@ function toggleButtons(disable) {
 }
 
 function updateSidebarEntities() {
-    const categories = ['人名', '地名', '时间', '职官', '书名'];
     const entities = {};
-    const entityCounts = {};  // 存储每个实体的标注次数
-    const entityTotalCounts = {};  // 存储每个实体在文本中的总出现次数
+    const entityCounts = {};
+    const entityTotalCounts = {};
+    const typeEntityCounts = {}; // 存储每个类型的体总数
 
     // 初始化
-    categories.forEach(category => {
+    entityTypes.forEach(category => {
         entities[category] = new Set();
         entityCounts[category] = {};
         entityTotalCounts[category] = {};
+        typeEntityCounts[category] = 0;
     });
 
     // 获取原始文本
     const originalText = document.getElementById('editable-result').innerText;
 
-    // 统计每个已标注实体的出现次数
+    // 统计实体
     document.querySelectorAll('[data-category]').forEach(element => {
         const category = element.getAttribute('data-category');
         const text = element.textContent;
-        if (categories.includes(category)) {
+        if (entityTypes.includes(category)) {
             entities[category].add(text);
             entityCounts[category][text] = (entityCounts[category][text] || 0) + 1;
             
-            // 初始化总出现次数
             if (!entityTotalCounts[category][text]) {
-                // 计算实体在原文中的总出现次数
                 const regex = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
                 entityTotalCounts[category][text] = (originalText.match(regex) || []).length;
             }
         }
     });
 
-    // 更新侧边栏显示
-    document.getElementById('sidebar-content').innerHTML = categories.map(category => `
-        <div class="entity-group">
-            <div class="entity-group-title">
-                ${category} (共${entities[category].size}个)
+    // 计算每个类型的实体总数
+    entityTypes.forEach(category => {
+        typeEntityCounts[category] = entities[category].size;
+    });
+
+    // 更新实体类型管理器
+    const typesManagerHtml = `
+        <div class="entity-types-manager">
+            <div class="entity-types-header">
+                实体类
+                <button class="add-type-button" onclick="addEntityType()">
+                    <img src="imges/添加.png" alt="添加" class="add-icon">
+                    添加实体类
+                </button>
             </div>
-            ${Array.from(entities[category]).map(entity => {
-                const annotatedCount = entityCounts[category][entity] || 0;
-                const totalCount = entityTotalCounts[category][entity] || 0;
-                const unAnnotatedCount = totalCount - annotatedCount;
-                const countText = `(已检${annotatedCount}处，未检${unAnnotatedCount}处)`;
-                
-                return `
-                    <div class="entity-item">
-                        <span class="${getHighlightClass(category)}">${entity}</span>
-                        <span class="entity-count">${countText}</span>
-                        <button class="delete-btn" onclick="deleteEntityFromList(this, '${entity}', '${category}')">删除</button>
+            <div class="entity-type-list">
+                ${entityTypes.map(type => `
+                    <div class="entity-type-tag ${getHighlightClass(type)}">
+                        <span class="entity-type-name">${type}</span>
+                        <span class="entity-type-count">${typeEntityCounts[type]}个实体</span>
+                        <img src="imges/删除.png" 
+                             alt="删除" 
+                             class="delete-type-icon" 
+                             onclick="deleteEntityType('${type}')">
                     </div>
-                `;
-            }).join('')}
+                `).join('')}
+            </div>
         </div>
-    `).join('');
+    `;
+
+    // 更新侧边栏内容
+    document.getElementById('sidebar-content').innerHTML = typesManagerHtml + 
+        entityTypes.map(category => `
+            <div class="entity-group">
+                <div class="entity-group-title">
+                    ${category} (共${entities[category].size}个)
+                </div>
+                ${Array.from(entities[category]).map(entity => {
+                    const annotatedCount = entityCounts[category][entity] || 0;
+                    const totalCount = entityTotalCounts[category][entity] || 0;
+                    const unAnnotatedCount = totalCount - annotatedCount;
+                    const countText = `(已检${annotatedCount}处，未检${unAnnotatedCount}处)`;
+                    
+                    return `
+                        <div class="entity-item">
+                            <span class="${getHighlightClass(category)}">${entity}</span>
+                            <span class="entity-count">${countText}</span>
+                            <img src="imges/删除.png" 
+                                 alt="删除" 
+                                 class="delete-btn" 
+                                 onclick="deleteEntityFromList(this, '${entity}', '${category}')">
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `).join('');
 }
 
 function exportAllData() {
@@ -780,7 +903,7 @@ function handleTextSelection() {
         
         // 为选中的文本添加背景色
         const span = document.createElement('span');
-        span.style.backgroundColor = '#e6f3ff'; // 浅蓝色背景
+        span.style.backgroundColor = '#e6f3ff'; // 浅蓝背景
         range.surroundContents(span);
         
         // 创建标注选项菜单
@@ -822,8 +945,7 @@ function showEntityMenu(x, y, selectedText, range) {
     menu.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
 
     // 添加标注选项
-    const entities = ['人名', '地名', '时间', '职官', '书名'];
-    entities.forEach(entity => {
+    entityTypes.forEach(entity => {
         const button = document.createElement('button');
         button.className = 'entity-menu-item';
         
@@ -871,10 +993,10 @@ function annotateSelection(range, category) {
     // 将选中的内容移动到新的span中
     range.surroundContents(span);
     
-    // 添加点击事件
-    span.addEventListener('click', function(event) {
+    // 添加右键点击事件
+    span.addEventListener('contextmenu', function(event) {
         handleEntityClick(this);
-        event.stopPropagation();
+        event.preventDefault(); // 阻止默认的右键菜单
     });
     
     // 更新侧边栏
@@ -984,4 +1106,68 @@ function clearCache() {
     };
     relations = [];
 }
- 
+
+// 添加新的实体类型
+function addEntityType() {
+    const newType = prompt('请输入新的实体类型名称：');
+    if (newType && !entityTypes.includes(newType)) {
+        entityTypes.push(newType);
+        entityData[newType] = [];
+        updateSidebarEntities();
+    } else if (entityTypes.includes(newType)) {
+        alert('该实体类型已存在！');
+    }
+}
+
+// 删除实体类
+function deleteEntityType(type) {
+    if (confirm(`确定要删除实体类型"${type}"吗？这将同时删除该类型的所有标注。`)) {
+        // 从文本中删除该类型的所有标注
+        const editableDiv = document.getElementById('editable-result');
+        const spans = editableDiv.querySelectorAll(`span[data-category="${type}"]`);
+        spans.forEach(span => {
+            const textNode = document.createTextNode(span.textContent);
+            span.parentNode.replaceChild(textNode, span);
+        });
+
+        // 从entityTypes和entityData中删除该类型
+        const index = entityTypes.indexOf(type);
+        if (index > -1) {
+            entityTypes.splice(index, 1);
+            delete entityData[type];
+        }
+
+        // 更新侧边栏
+        updateSidebarEntities();
+    }
+}
+
+function setEntityStatus(entityText, category, status, menu) {
+    // 移除菜单
+    if (menu) {
+        menu.remove();
+    }
+
+    // 使用保存的实体元素
+    if (clickedEntity) {
+        if (status === 'unchecked') {
+            clickedEntity.setAttribute('data-status', 'unchecked');
+        } else {
+            clickedEntity.removeAttribute('data-status');
+        }
+        clickedEntity = null; // 清除引用
+    }
+
+    // 更新所有相同文本的实体状态
+    const editableDiv = document.getElementById('editable-result');
+    const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
+    spans.forEach(span => {
+        if (span.textContent === entityText) {
+            if (status === 'unchecked') {
+                span.setAttribute('data-status', 'unchecked');
+            } else {
+                span.removeAttribute('data-status');
+            }
+        }
+    });
+}

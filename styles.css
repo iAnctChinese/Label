@@ -50,12 +50,13 @@ header {
     text-align: left;
 }
 
-.highlight-PER, .highlight-LOC, .highlight-ORG, .highlight-MISC {
+.highlight-PER, .highlight-LOC, .highlight-ORG, .highlight-MISC, .highlight-BOOK {
     position: relative;
     cursor: pointer;
     transition: all 0.3s ease;
     border-radius: 3px;
     padding: 2px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .highlight-PER {
@@ -78,8 +79,13 @@ header {
     box-shadow: 0 2px 4px rgba(255,235,204,0.3);
 }
 
+.highlight-BOOK {
+    background: linear-gradient(120deg, rgba(173,216,230,0.5), rgba(173,216,230,0.8));
+    box-shadow: 0 2px 4px rgba(173,216,230,0.3);
+}
+
 /* 高亮悬停效果 */
-.highlight-PER:hover, .highlight-LOC:hover, .highlight-ORG:hover, .highlight-MISC:hover {
+.highlight-PER:hover, .highlight-LOC:hover, .highlight-ORG:hover, .highlight-MISC:hover, .highlight-BOOK:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
@@ -279,7 +285,7 @@ header {
 .entity-item, .relation-item {
     display: flex;
     align-items: center;
-    padding: 6px 12px;
+    padding: 8px 12px;
     background: white;
     border-radius: 6px;
     margin-bottom: 6px;
@@ -288,26 +294,29 @@ header {
     font-size: 12px;
     line-height: 1.4;
     letter-spacing: 0.2px;
-    gap: 4px;
 }
 
 .entity-item:hover, .relation-item:hover {
     background: #f8f8f8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
 }
 
 .delete-btn {
-    margin-left: auto;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: none;
-    background: #ff4757;
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.2px;
+    width: 16px;
+    height: 16px;
     cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    margin-left: auto;  /* 保持靠右对齐 */
+    padding: 2px;      /* 添加内边距使点击区域更大 */
+    border-radius: 4px; /* 添加圆角 */
+}
+
+.delete-btn:hover {
     opacity: 1;
-    transition: opacity 0.2s ease;
+    transform: scale(1.1);
+    background-color: rgba(255, 71, 87, 0.1); /* 添加淡红色背景 */
 }
 
 .container {
@@ -502,7 +511,7 @@ header {
     border-radius: 2px;
 }
 
-/* 为每种实体类型的颜色标记设置背景色 */
+/* 统一所有实体类型的颜色标记 */
 .color-mark.highlight-PER {
     background: rgba(255,204,203,1);
 }
@@ -519,33 +528,49 @@ header {
     background: rgba(255,235,204,1);
 }
 
+.color-mark.highlight-BOOK {
+    background: rgba(173,216,230,1);
+}
+
 /* 添加实体菜单样式 */
 .entity-menu {
     position: absolute;
-    background-color: #fff;
-    border: 1px solid #ccc;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    padding: 5px;
-    border-radius: 5px;
+    background-color: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 4px;
     z-index: 1000;
 }
 
-.entity-menu button {
-    display: block;
+.entity-menu-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
-    padding: 5px 10px;
-    margin: 2px 0;
+    padding: 8px 12px;
     border: none;
     background: none;
-    text-align: left;
     cursor: pointer;
     font-size: 14px;
     color: var(--text-primary);
     transition: background-color 0.2s ease;
+    white-space: nowrap;
+    border-bottom: 1px solid #e1e1e1;  /* 添加底部边框作为分割线 */
 }
 
-.entity-menu button:hover {
+.entity-menu-button:hover {
     background-color: #f5f5f5;
+}
+
+.entity-menu-button:last-child {
+    border-bottom: none;  /* 最后一个按钮不需要分割线 */
+}
+
+.menu-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
 }
 
 .entity-count {
@@ -567,4 +592,207 @@ header {
     line-height: 1.4;
     letter-spacing: 0.2px;
     gap: 4px;
+}
+
+/* 修改实体类管理样式 */
+.entity-types-manager {
+    margin-bottom: 20px;
+}
+
+.entity-types-header {
+    padding: 0px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+}
+
+.add-type-button {
+    float: right;
+    padding: 4px 8px;
+    background: white;
+    color: #41466E;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.add-type-button:hover {
+    background: #e5e5e5;
+}
+
+.add-type-button .add-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.entity-type-list {
+    padding: 0 16px;
+}
+
+/* 统一实体类型标签和实体项的样式 */
+.entity-type-tag {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    font-size: 12px;
+    line-height: 1.4;
+    letter-spacing: 0.2px;
+}
+
+.entity-type-tag:hover {
+    background: #f8f8f8;
+}
+
+.entity-type-name {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.entity-type-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 8px;
+}
+
+.delete-type-icon {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 2px;
+    transition: all 0.2s ease;
+}
+
+.delete-type-icon:hover {
+    opacity: 1;
+    background: rgba(255, 71, 87, 0.1);
+    border-radius: 50%;
+}
+
+/* 修改高亮类的颜色定义，统一书名类样式 */
+.highlight-PER, .entity-type-tag.highlight-PER {
+    background: rgba(255,204,203,0.3);
+}
+
+.highlight-LOC, .entity-type-tag.highlight-LOC {
+    background: rgba(204,255,204,0.3);
+}
+
+.highlight-ORG, .entity-type-tag.highlight-ORG {
+    background: rgba(204,204,255,0.3);
+}
+
+.highlight-MISC, .entity-type-tag.highlight-MISC {
+    background: rgba(255,235,204,0.3);
+}
+
+.highlight-BOOK, .entity-type-tag.highlight-BOOK {
+    background: rgba(173,216,230,0.3);
+}
+
+/* 文本中的高亮样式，统一包含书名类 */
+span.highlight-PER,
+span.highlight-LOC,
+span.highlight-ORG,
+span.highlight-MISC,
+span.highlight-BOOK {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 3px;
+    padding: 2px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+span.highlight-PER:hover,
+span.highlight-LOC:hover,
+span.highlight-ORG:hover,
+span.highlight-MISC:hover,
+span.highlight-BOOK:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* 修改状态标记样式，使其始终显示 */
+span[data-status="unchecked"] {
+    position: relative;  /* 确保相对定位 */
+}
+
+span[data-status="unchecked"]::before {
+    content: '';
+    position: absolute;
+    top: -2px;          /* 调整位置到右上角 */
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    background-color: #ff4757;
+    border-radius: 50%;
+    border: 1px solid white;
+    z-index: 1;         /* 确保显示在最上层 */
+}
+
+/* 美化删除按钮的工具提示样式 */
+[title] {
+    position: relative;
+}
+
+[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 12px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    margin-bottom: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: tooltipFade 0.2s ease-in-out;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+}
+
+/* 添加小三角形指示器 */
+[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.8);
+    margin-bottom: -3px;
+    pointer-events: none;
+    animation: tooltipFade 0.2s ease-in-out;
+}
+
+/* 添加工具提示的淡入动画 */
+@keyframes tooltipFade {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }
