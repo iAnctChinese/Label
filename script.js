@@ -146,13 +146,9 @@ function renderNERResult(nerResult) {
     tempDiv.textContent = text;
     
     // 更新entityData
-    entityData = {
-        '人名': nerResult['人名'] || [],
-        '地名': nerResult['地名'] || [],
-        '时间': nerResult['时间'] || [],
-        '职官': nerResult['职官'] || [],
-        '书名': nerResult['书名'] || []
-    };
+    Object.keys(entityData).forEach(key => {
+        entityData[key] = nerResult[key] || [];
+    });
     
     // 按长度排序实体，优先替换较长的实体
     const allEntities = [];
@@ -300,7 +296,7 @@ function handleEntityDelete(entityText, category, button) {
         clickedEntity = null; // 清除引用
     }
 
-    // 更新��边栏的实体统计
+    // 更新边栏的实体统计
     updateSidebarEntities();
 
     // 如果知识图谱正在显示，则更新图谱
@@ -1018,7 +1014,7 @@ function annotateSelection(range, category) {
 }
 
 function deleteEntityFromList(button, entityText, category) {
-    // 从侧边栏中删除实体���
+    // 从侧边栏中删除实体
     const entityItem = button.closest('.entity-item');
     entityItem.remove();
 

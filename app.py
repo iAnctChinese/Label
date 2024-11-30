@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from zhipuai import ZhipuAI
 from flask_cors import CORS
 import json
-app = Flask(__name__)
 
 # 初始化 Flask 应用
 app = Flask(__name__)
