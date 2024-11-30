@@ -64,9 +64,20 @@ function pasteText() {
 async function performNER() {
     // 如果有缓存，直接使用缓存
     if (entityCache) {
-        renderNERResult(entityCache.entities);
-        updateSidebarEntities();
-        return;
+        // 检查缓存的实体类型是否与当前的实体类型一致
+        const cachedEntityTypes = Object.keys(entityCache.entities);
+        const currentEntityTypes = Object.keys(entityData);
+        
+        // 检查实体类型是否完全相同
+        const entityTypesMatch = 
+            cachedEntityTypes.length === currentEntityTypes.length && 
+            cachedEntityTypes.every(type => currentEntityTypes.includes(type));
+        
+        if (entityTypesMatch) {
+            renderNERResult(entityCache.entities);
+            updateSidebarEntities();
+            return;
+        }
     }
 
     // 检查originalText是否为空
@@ -87,7 +98,10 @@ async function performNER() {
         const response = await fetch('http://localhost:5000/ner', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: originalText }), // 使用originalText
+            body: JSON.stringify({ 
+                text: originalText,
+                entityTypes: entityTypes  // 添加实体类型数组
+            }),
         });
 
         if (!response.ok) {
@@ -286,7 +300,7 @@ function handleEntityDelete(entityText, category, button) {
         clickedEntity = null; // 清除引用
     }
 
-    // 更新侧边栏的实体统计
+    // 更新��边栏的实体统计
     updateSidebarEntities();
 
     // 如果知识图谱正在显示，则更新图谱
@@ -1004,7 +1018,7 @@ function annotateSelection(range, category) {
 }
 
 function deleteEntityFromList(button, entityText, category) {
-    // 从侧边栏中删除实体项
+    // 从侧边栏中删除实体���
     const entityItem = button.closest('.entity-item');
     entityItem.remove();
 

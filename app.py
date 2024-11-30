@@ -30,7 +30,7 @@ def merge_overlapping_entities(entities_dict, text):
                     'end': start + len(entity),
                     'text': entity,
                     'category': category,
-                    'length': len(entity)  # 添加长度属性
+                    'length': len(entity)
                 })
                 start += 1
 
@@ -69,20 +69,15 @@ def merge_overlapping_entities(entities_dict, text):
         if not is_nested:
             filtered_entities.append(entity)
 
-    # 重新组织为原始格式
-    result = {
-        '人名': [],
-        '地名': [],
-        '时间': [],
-        '职官': [],
-        '书名': []
-    }
+    # 重新组织为原始格式，使用动态的类别
+    result = {category: [] for category in entities_dict.keys()}
     
     # 按照在文本中的位置排序
     filtered_entities.sort(key=lambda x: x['start'])
     
     for entity in filtered_entities:
-        result[entity['category']].append(entity['text'])
+        if entity['category'] in result:  # 确保类别存在
+            result[entity['category']].append(entity['text'])
 
     # 去重
     for category in result:
@@ -95,24 +90,32 @@ def ner():
     try:
         data = request.get_json()
         text = data.get("text")
+        entity_types = data.get("entityTypes", ['人名', '地名', '时间', '职官', '书名'])  # 获取实体类型，如果没有则使用默认值
+        
+        # 确保所有的实体类型都是正确编码的字符串
+        entity_types = [
+            type if isinstance(type, str) else str(type) 
+            for type in entity_types
+        ]
+        
         if not text:
             return jsonify({"error": "Text input is required"}), 400
 
+        # 构建动态的JSON模板
+        json_template = "{\n" + ",\n".join([f'    "{type}": []' for type in entity_types]) + "\n}"
+
+        # 确保提示词中的实体类型列表是正确的中文格式
+        entity_types_str = "、".join(entity_types)
+        
         response = client.chat.completions.create(
             model="glm-4",
             messages=[
                 {"role": "user", "content": f"请提取以下文本中的命名实体：{text}"},
                 {"role": "assistant", "content": "好的，请告诉我您需要的实体分类。"},
-                {"role": "user", "content": """
-                需要人名、地名、时间、职官、书名。
+                {"role": "user", "content": f"""
+                需要{entity_types_str}。
                 请严格按照以下JSON格式输出，不要添加任何其他字符：
-                {
-                    "人名": [],
-                    "地名": [],
-                    "时间": [],
-                    "职官": [],
-                    "书名": []
-                }
+                {json_template}
                 只输出JSON，不要任何解释说明。
                 """}
             ]
@@ -142,17 +145,10 @@ def ner():
             return jsonify({"error": "Invalid JSON format"}), 500
 
         # 验证和清理实体数据
-        cleaned_entities = {
-            '人名': [],
-            '地名': [],
-            '时间': [],
-            '职官': [],
-            '书名': []
-        }
+        cleaned_entities = {entity_type: [] for entity_type in entity_types}
         
         for category in cleaned_entities.keys():
             if category in entities:
-                # 清理每个实体字符串
                 cleaned_entities[category] = [
                     str(entity).strip().replace('"', '').replace('>', '')
                     for entity in entities[category]
@@ -186,7 +182,7 @@ def extract_relations():
         
         已识别的实体：{json.dumps(entities, ensure_ascii=False)}
         
-        请严格按照以下JSON格式输出关系：
+        请严格按照以下JSON格式输出���系：
         {{
             "relations": [
                 {{
@@ -219,7 +215,7 @@ def extract_relations():
         json_content = result[start_index:end_index + 1]
         relations_data = json.loads(json_content)
         
-        # 确保返回的数据格式正确
+        # 确保返回数据格式正确
         if not isinstance(relations_data, dict) or 'relations' not in relations_data:
             return jsonify({"error": "Invalid response structure"}), 500
             
