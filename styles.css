@@ -50,7 +50,7 @@ header {
     text-align: left;
 }
 
-.highlight-PER, .highlight-LOC, .highlight-ORG, .highlight-MISC, .highlight-BOOK {
+.highlight-PER, .highlight-LOC, .highlight-ORG, .highlight-MISC, .highlight-BOOK, .highlight-NEWADD {
     position: relative;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -84,8 +84,13 @@ header {
     box-shadow: 0 2px 4px rgba(173,216,230,0.3);
 }
 
+.highlight-NEWADD {
+    background: linear-gradient(120deg, rgba(255,183,128,0.5), rgba(255,183,128,0.8));
+    box-shadow: 0 2px 4px rgba(255,183,128,0.3);
+}
+
 /* 高亮悬停效果 */
-.highlight-PER:hover, .highlight-LOC:hover, .highlight-ORG:hover, .highlight-MISC:hover, .highlight-BOOK:hover {
+.highlight-PER:hover, .highlight-LOC:hover, .highlight-ORG:hover, .highlight-MISC:hover, .highlight-BOOK:hover, .highlight-NEWADD:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
@@ -532,6 +537,10 @@ header {
     background: rgba(173,216,230,1);
 }
 
+.color-mark.highlight-NEWADD {
+    background: rgba(255,183,128,1);
+}
+
 /* 添加实体菜单样式 */
 .entity-menu {
     position: absolute;
@@ -703,12 +712,17 @@ header {
     background: rgba(173,216,230,0.3);
 }
 
+.highlight-NEWADD, .entity-type-tag.highlight-NEWADD {
+    background: rgba(255,183,128,0.3);
+}
+
 /* 文本中的高亮样式，统一包含书名类 */
 span.highlight-PER,
 span.highlight-LOC,
 span.highlight-ORG,
 span.highlight-MISC,
-span.highlight-BOOK {
+span.highlight-BOOK,
+span.highlight-NEWADD {
     position: relative;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -721,7 +735,8 @@ span.highlight-PER:hover,
 span.highlight-LOC:hover,
 span.highlight-ORG:hover,
 span.highlight-MISC:hover,
-span.highlight-BOOK:hover {
+span.highlight-BOOK:hover,
+span.highlight-NEWADD:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }

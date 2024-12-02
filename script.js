@@ -64,16 +64,18 @@ function pasteText() {
 async function performNER() {
     // 如果有缓存，直接使用缓存
     if (entityCache) {
-        // 检查缓存的实体类型是否与当前的实体类型一致
-        const cachedEntityTypes = Object.keys(entityCache.entities);
-        const currentEntityTypes = Object.keys(entityData);
+        // 检查缓存的文本是否与当前文本一致
+        const cleanCurrentText = originalText.replace(/[\s\n]/g, '');
+        const cleanCachedText = entityCache.text.replace(/[\s\n]/g, '');
         
-        // 检查实体类型是否完全相同
-        const entityTypesMatch = 
-            cachedEntityTypes.length === currentEntityTypes.length && 
-            cachedEntityTypes.every(type => currentEntityTypes.includes(type));
-        
-        if (entityTypesMatch) {
+        if (cleanCurrentText === cleanCachedText) {
+            // 确保缓存的实体类型与当前的实体类型匹配
+            entityTypes.forEach(type => {
+                if (!entityCache.entities[type]) {
+                    entityCache.entities[type] = [];
+                }
+            });
+            
             renderNERResult(entityCache.entities);
             updateSidebarEntities();
             return;
@@ -293,7 +295,7 @@ function handleEntityDelete(entityText, category, button) {
     if (clickedEntity) {
         const textNode = document.createTextNode(clickedEntity.textContent);
         clickedEntity.parentNode.replaceChild(textNode, clickedEntity);
-        clickedEntity = null; // 清除引用
+        clickedEntity = null; // 清除引���
     }
 
     // 更新边栏的实体统计
@@ -679,9 +681,9 @@ function getHighlightClass(category) {
         '地名': 'highlight-LOC',
         '时间': 'highlight-MISC',
         '职官': 'highlight-ORG',
-        '书名': 'highlight-BOOK'
+        '书名': 'highlight-BOOK',
     };
-    return highlightClasses[category] || 'highlight-MISC';
+    return highlightClasses[category] || 'highlight-NEWADD';
 }
 
 function toggleButtons(disable) {
@@ -1117,13 +1119,38 @@ function clearCache() {
     relations = [];
 }
 
-// 添加新的实体类型
-function addEntityType() {
+// 修改添加实体类型的函数
+async function addEntityType() {
     const newType = prompt('请输入新的实体类型名称：');
     if (newType && !entityTypes.includes(newType)) {
         entityTypes.push(newType);
         entityData[newType] = [];
-        updateSidebarEntities();
+        
+        // 显示加载动画
+        document.getElementById('loading-spinner').style.display = 'block';
+        toggleButtons(true);
+        
+        try {
+            // 清除缓存，强制重新识别
+            clearCache();
+            
+            // 重新进行实体识别
+            await performNER();
+            
+        } catch (error) {
+            console.error('实体识别错误:', error);
+            alert('实体识别失败，请稍后重试');
+            
+            // 移除刚添加的实体类型
+            const index = entityTypes.indexOf(newType);
+            if (index > -1) {
+                entityTypes.splice(index, 1);
+                delete entityData[newType];
+            }
+        } finally {
+            document.getElementById('loading-spinner').style.display = 'none';
+            toggleButtons(false);
+        }
     } else if (entityTypes.includes(newType)) {
         alert('该实体类型已存在！');
     }
@@ -1145,6 +1172,11 @@ function deleteEntityType(type) {
         if (index > -1) {
             entityTypes.splice(index, 1);
             delete entityData[type];
+            
+            // 更新缓存中的实体数据
+            if (entityCache) {
+                delete entityCache.entities[type];
+            }
         }
 
         // 更新侧边栏
