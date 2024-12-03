@@ -741,7 +741,7 @@ span.highlight-NEWADD:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-/* 修改状态标记样式，使其始终显示 */
+/* 修改状态标记样式��使其始终显示 */
 span[data-status="unchecked"] {
     position: relative;  /* 确保相对定位 */
 }
@@ -810,4 +810,52 @@ span[data-status="unchecked"]::before {
         opacity: 1;
         transform: translateX(-50%) translateY(0);
     }
+}
+
+/* 地图容器样式 */
+#map-container {
+    position: relative;
+    background: white;
+    border: none;
+    margin-top: 0;
+}
+
+/* 地点列表样式 */
+.location-list {
+    padding: 16px;
+}
+
+.location-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.location-item:hover {
+    background: #f8f8f8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.location-index {
+    width: 24px;
+    height: 24px;
+    background: #41466E;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    margin-right: 12px;
+}
+
+.location-name {
+    font-size: 14px;
+    color: var(--text-primary);
 }

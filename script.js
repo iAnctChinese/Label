@@ -295,7 +295,7 @@ function handleEntityDelete(entityText, category, button) {
     if (clickedEntity) {
         const textNode = document.createTextNode(clickedEntity.textContent);
         clickedEntity.parentNode.replaceChild(textNode, clickedEntity);
-        clickedEntity = null; // 清除引���
+        clickedEntity = null; // 清除引用
     }
 
     // 更新边栏的实体统计
@@ -635,12 +635,18 @@ async function showKnowledgeGraph() {
         
     } catch (error) {
         console.error('知识图谱生成错误:', error);
-        alert('知识图生成失败，请稍后重试');
+        //alert('知识图生成失败，请稍后重试');
         const graphContainer = document.getElementById('knowledge-graph');
         graphContainer.style.display = 'none';
         // 显示回文本编辑区域
         const container = document.querySelector('.container');
         container.style.display = 'block';
+        
+        // 恢复到关系标注按钮的高亮状态
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.nav-button:nth-child(3)').classList.add('active');
     } finally {
         document.getElementById('loading-spinner').style.display = 'none';
         toggleButtons(false);
@@ -687,11 +693,17 @@ function getHighlightClass(category) {
 }
 
 function toggleButtons(disable) {
-    const buttons = document.querySelectorAll('button, .nav-button, .icons img');
+    const buttons = document.querySelectorAll('button, .icons img');
     buttons.forEach(button => {
         button.disabled = disable;
         button.style.pointerEvents = disable ? 'none' : 'auto';
         button.style.opacity = disable ? '0.6' : '1';
+    });
+    
+    // 导航按钮始终保持可用
+    document.querySelectorAll('.nav-button').forEach(button => {
+        button.style.pointerEvents = 'auto';
+        button.style.opacity = '1';
     });
 }
 
@@ -857,7 +869,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 处理按钮样式
             handleNavButtonClick(this);
             
-            // 获取可编辑区域元素
+            // 获取可编辑区元素
             const editableDiv = document.getElementById('editable-result');
             
             if (currentMode.includes('实体标注')) {
@@ -1100,7 +1112,7 @@ function enableTextSelection(element) {
     element.addEventListener('mouseup', element.textSelectionHandler);
 }
 
-// 添加禁用文本选择的函数
+// 添加禁用文选择的函数
 function disableTextSelection(element) {
     if (element && element.textSelectionHandler) {
         element.removeEventListener('mouseup', element.textSelectionHandler);
@@ -1213,3 +1225,218 @@ function setEntityStatus(entityText, category, status, menu) {
         }
     });
 }
+
+let map = null;
+let geocoder = null;
+let markers = [];
+let polyline = null;
+
+async function showLocationTrajectory() {
+    const editableDiv = document.getElementById('editable-result');
+    if (!editableDiv) {
+        alert('请先进行实体识别');
+        return;
+    }
+
+    // 显示加载动画
+    document.getElementById('loading-spinner').style.display = 'block';
+    toggleButtons(true);
+
+    try {
+        // 隐藏文本编辑区域、知识图谱和侧边栏
+        const container = document.querySelector('.container');
+        container.style.display = 'none';
+        const graphContainer = document.getElementById('knowledge-graph');
+        graphContainer.style.display = 'none';
+        const sidebar = document.getElementById('sidebar');
+        sidebar.style.display = 'none';
+
+        // 移除已存在的地图容器
+        const existingMapContainer = document.getElementById('map-container');
+        if (existingMapContainer) {
+            existingMapContainer.remove();
+        }
+
+        // 创建新的地图容器
+        const mapContainer = document.createElement('div');
+        mapContainer.id = 'map-container';
+        mapContainer.style.cssText = `
+            margin-left: 0;
+            width: 100%;
+            height: calc(100vh - 80px);
+        `;
+        document.body.appendChild(mapContainer);
+
+        // 每次都重新初始化地图
+        map = new AMap.Map('map-container', {
+            zoom: 4,
+            center: [116.397428, 39.90923]
+        });
+        geocoder = new AMap.Geocoder();
+
+        // 获取所有地名实体
+        const locations = entityData['地名'] || [];
+        
+        // 清除现有标记和路线
+        clearMapOverlays();
+
+        // 获取地点坐标并绘制轨迹
+        const coordinates = await getLocationsCoordinates(locations);
+        if (coordinates.length > 0) {
+            drawTrajectory(coordinates, locations);
+            // 调整地图视野以包含所有标记点
+            map.setFitView();
+        } else {
+            alert('未找到有效的地理坐标');
+        }
+
+    } catch (error) {
+        console.error('地图轨迹生成错误:', error);
+        alert('地图轨迹生成失败，请稍后重试');
+    } finally {
+        document.getElementById('loading-spinner').style.display = 'none';
+        toggleButtons(false);
+        
+        // 确保导航按钮可以点击
+        document.querySelectorAll('.nav-button').forEach(button => {
+            button.style.pointerEvents = 'auto';
+            button.style.opacity = '1';
+        });
+    }
+}
+
+function clearMapOverlays() {
+    // 清除现有标记
+    markers.forEach(marker => marker.setMap(null));
+    markers = [];
+    
+    // 清除现有路线
+    if (polyline) {
+        polyline.setMap(null);
+        polyline = null;
+    }
+}
+
+async function getLocationsCoordinates(locations) {
+    const coordinates = [];
+    
+    for (const location of locations) {
+        try {
+            const result = await new Promise((resolve, reject) => {
+                geocoder.getLocation(location, (status, result) => {
+                    if (status === 'complete' && result.geocodes.length) {
+                        resolve(result.geocodes[0].location);
+                    } else {
+                        reject(new Error(`未找到地点: ${location}`));
+                    }
+                });
+            });
+            
+            coordinates.push({
+                name: location,
+                position: [result.lng, result.lat]
+            });
+        } catch (error) {
+            console.warn(`地理编码失败: ${location}`, error);
+        }
+    }
+    
+    return coordinates;
+}
+function drawTrajectory(coordinates, locations) {
+    // 添加标记点
+    coordinates.forEach((coord, index) => {
+        const marker = new AMap.Marker({
+            position: coord.position,
+            title: coord.name,
+            label: {
+                content: `${index + 1}. ${coord.name}`,
+                direction: 'top'
+            }
+        });
+        
+        marker.setMap(map);
+        markers.push(marker);
+    });
+
+    // 绘制路线
+    if (coordinates.length > 1) {
+        const path = coordinates.map(coord => coord.position);
+        polyline = new AMap.Polyline({
+            path: path,
+            strokeColor: "#3366FF",
+            strokeWeight: 3,
+            strokeOpacity: 0.8,
+            showDir: true
+        });
+        
+        polyline.setMap(map);
+    }
+}
+
+function updateSidebarLocations(locations) {
+    document.getElementById('sidebar-content').innerHTML = `
+        <div class="location-list">
+            <div class="entity-group-title">地点轨迹</div>
+            ${locations.map((location, index) => `
+                <div class="location-item">
+                    <span class="location-index">${index + 1}</span>
+                    <span class="location-name">${location}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// 修改导航按钮点击事件处理
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.nav-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const currentMode = this.textContent.trim();
+            const previousMode = document.querySelector('.nav-button.active').textContent.trim();
+            
+            // 处理按钮样式
+            handleNavButtonClick(this);
+            
+            if (currentMode.includes('地图轨迹')) {
+                showLocationTrajectory();
+            } else {
+                // 如果之前是地图轨迹页面，先返回
+                if (document.getElementById('map-container')) {
+                    returnFromMapView();
+                }
+                
+                // 执行相应页面的逻辑
+                if (currentMode.includes('实体标注')) {
+                    updateSidebarEntities();
+                } else if (currentMode.includes('关系标注')) {
+                    showRelationAnnotation();
+                } else if (currentMode.includes('知识图谱')) {
+                    showKnowledgeGraph();
+                } else if (currentMode.includes('结构标注')) {
+                    returnToStructureAnnotation();
+                } else if (currentMode.includes('导出数据')) {
+                    exportAllData();
+                }
+            }
+        });
+    });
+});
+
+// 添加返回其他页面的函数
+function returnFromMapView() {
+    // 移除地图容器
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+        mapContainer.remove();
+    }
+    
+    // 显示侧边栏
+    const sidebar = document.getElementById('sidebar');
+    sidebar.style.display = 'block';
+    
+    // 显示文本编辑区域
+    const container = document.querySelector('.container');
+    container.style.display = 'block';
+}
+
