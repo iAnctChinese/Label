@@ -12,7 +12,9 @@
 <body>
     <header>
         <div class="logo"> 智能标注平台</div>
-        <span style="margin-right: 20px;">项目管理</span>
+        <a href="index.html" class="management-link">
+            <span>项目管理</span>
+        </a>
         <div class="document-management"><span><b>文档管理</b></span></div>
     </header>
 
@@ -117,51 +119,259 @@ cancelButton.onclick = () => {
     modal.style.display = 'none';
 };
 
-// 点击创建文档按钮时创建文档
-createProjectButton.onclick = () => {
-    const projectName = document.getElementById('projectName').value;
-    const projectDescription = document.getElementById('projectDescription').value;
-    const timestamp = new Date().toLocaleString();
+// 获取文档列表的函数
+async function fetchDocuments() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('projectId');
+        
+        if (!projectId) {
+            console.error('未提供项目ID');
+            alert('无效的项目ID，请从项目列表进入');
+            window.location.href = 'index.html';
+            return;
+        }
 
-    const documentItem = document.createElement('div');
-    documentItem.className = 'document-item';
-    documentItem.innerHTML = `
-        <div class="details">
-<a href="editor.html" class="name" style="text-decoration: none; color: inherit;">
-    <b>${projectName}</b>
-</a>        </div>
-        <button class="open-button">打开文档</button>
-        <button class="xijie-button" 
-            style="background-color: #fff; color: #606266; border: 0.5px solid gray;" 
-            onclick="showUpdateModal('${projectName}', '${projectDescription}', '${timestamp}')">
-            文档详细
-        </button>
-        <button class="copy-button" style="background-color: #E6A23C; color: white;border-radius: 5px; border: 0.5px solid gray;padding: 5px 10px;" onclick="copyDocument(this)">复制文档</button>
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
 
-        <button class="delete-button" onclick="deleteProject(this)">删除文档</button>
-    `;
-    documentList.appendChild(documentItem);
-    modal.style.display = 'none'; // 关闭模态框
+        const response = await fetch(`http://localhost:5000/api/projects/${projectId}/documents`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
 
-    // 清空输入框
-    document.getElementById('projectName').value = '';
-    document.getElementById('projectDescription').value = '';
-};
+        if (!response.ok) {
+            if (response.status === 404) {
+                alert('项目不存在或无权访问');
+                window.location.href = 'index.html';
+                return;
+            }
+            throw new Error('获取文档列表失败');
+        }
 
-// 显示文档详细模态框
-function showUpdateModal(name, description, createTime) {
-    document.getElementById('updateProjectName').value = name;
-    document.getElementById('updateProjectDescription').value = description;
-    document.getElementById('createTime').value = createTime;
-    document.getElementById('updateTime').value = new Date().toLocaleString(); // 显示当前时间为更新时间
-    updateModal.style.display = 'flex'; // 显示更新模态框
+        const data = await response.json();
+        renderDocuments(data.documents);
+    } catch (error) {
+        
+    }
+}
+
+// 渲染文档列表
+function renderDocuments(documents) {
+    const documentList = document.getElementById('documentList');
+    documentList.innerHTML = '';
+
+    documents.forEach(doc => {
+        const documentItem = document.createElement('div');
+        documentItem.className = 'document-item';
+        documentItem.innerHTML = `
+            <div class="details">
+                <a href="editor.html?documentId=${doc.id}&projectId=${new URLSearchParams(window.location.search).get('projectId')}" 
+                   class="name" style="text-decoration: none; color: inherit;">
+                    <b>${doc.name}</b>
+                </a>
+            </div>
+            <button class="open-button" 
+                onclick="window.location.href='editor.html?documentId=${doc.id}&projectId=${new URLSearchParams(window.location.search).get('projectId')}'">
+                打开文档
+            </button>
+            <button class="xijie-button" 
+                style="background-color: #fff; color: #606266; border: 0.5px solid gray;" 
+                onclick="showUpdateModal('${doc.name}', '${doc.description}', '${doc.created_at}', '${doc.updated_at}', ${doc.id})">
+                文档详细
+            </button>
+            <button class="copy-button" 
+                style="background-color: #E6A23C; color: white; border-radius: 5px; border: 0.5px solid gray; padding: 5px 10px;" 
+                onclick="copyDocument(${doc.id})">复制文档</button>
+            <button class="delete-button" onclick="deleteDocument(${doc.id})">删除文档</button>
+        `;
+        documentList.appendChild(documentItem);
+    });
+}
+
+// 创建新文档
+async function createDocument() {
+    try {
+        const projectId = new URLSearchParams(window.location.search).get('projectId');
+        const name = document.getElementById('projectName').value;
+        const description = document.getElementById('projectDescription').value;
+        
+        if (!name) {
+            alert('请输入文档名称');
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/projects/${projectId}/documents`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                name,
+                description
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('创建文档失败');
+        }
+
+        fetchDocuments();
+        modal.style.display = 'none';
+        document.getElementById('projectName').value = '';
+        document.getElementById('projectDescription').value = '';
+    } catch (error) {
+        console.error('创建文档错误:', error);
+        alert('创建文档失败');
+    }
 }
 
 // 删除文档
-function deleteProject(button) {
-    const documentItem = button.parentElement; // 获取到包含按钮的整个文档元素
-    documentList.removeChild(documentItem); // 从文档中移除该文档元素
+async function deleteDocument(documentId) {
+    if (!confirm('确定要删除这个文档吗？')) {
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('删除文档失败');
+        }
+
+        fetchDocuments();
+    } catch (error) {
+        console.error('删除文档错误:', error);
+        alert('删除文档失败');
+    }
 }
+
+// 页面加载时获取文档列表
+document.addEventListener('DOMContentLoaded', fetchDocuments);
+
+// 修改创建文档按钮的点击事件
+createProjectButton.onclick = createDocument;
+
+// 显示文档详细模态框
+function showUpdateModal(name, description, createTime, updateTime, documentId) {
+    const nameInput = document.getElementById('updateProjectName');
+    nameInput.value = name;
+    nameInput.removeAttribute('disabled');
+    nameInput.classList.remove('readonly');
+    
+    document.getElementById('updateProjectDescription').value = description || '';
+    document.getElementById('createTime').value = new Date(createTime).toLocaleString();
+    document.getElementById('updateTime').value = new Date(updateTime).toLocaleString();
+    
+    updateModal.setAttribute('data-document-id', documentId);
+    updateModal.style.display = 'flex';
+}
+
+// 添加复制文档功能
+async function copyDocument(documentId) {
+    try {
+        const token = localStorage.getItem('token');
+        const projectId = new URLSearchParams(window.location.search).get('projectId');
+        
+        const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('获取文档信息失败');
+        }
+
+        const doc = await response.json();
+        
+        const copyResponse = await fetch(`http://localhost:5000/api/projects/${projectId}/documents`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                name: `${doc.name} - 副本`,
+                description: doc.description,
+                content: doc.content
+            })
+        });
+
+        if (!copyResponse.ok) {
+            throw new Error('复制文档失败');
+        }
+
+        fetchDocuments();
+        alert('文档复制成功');
+    } catch (error) {
+        console.error('复制文档错误:', error);
+        alert('复制文档失败');
+    }
+}
+
+// 添加更新文档功能
+async function updateDocument() {
+    try {
+        const token = localStorage.getItem('token');
+        const name = document.getElementById('updateProjectName').value;
+        const description = document.getElementById('updateProjectDescription').value;
+        const documentId = updateModal.getAttribute('data-document-id');
+
+        if (!name) {
+            alert('文档名称不能为空');
+            return;
+        }
+
+        const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                name,
+                description
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('更新文档失败');
+        }
+
+        fetchDocuments();
+        updateModal.style.display = 'none';
+        alert('文档更新成功');
+    } catch (error) {
+        console.error('更新文档错误:', error);
+        alert('更新文档失败');
+    }
+}
+
+// 绑定更新文档按钮事件
+document.getElementById('updateProjectButton').onclick = updateDocument;
 
     </script>
 </body>

@@ -58,8 +58,8 @@
                 <span class="close" id="closeUpdateModal">&times;</span>
             </div>
             <div class="input-group">
-                <label for="updateProjectName">项目名称</label>
-                <input type="text" id="updateProjectName" class="readonly" disabled>
+                <label for="updateProjectName">项目名称 <span style="color: red;">*</span></label>
+                <input type="text" id="updateProjectName">
             </div>
             <div class="input-group">
                 <label for="updateProjectDescription">项目描述</label>
@@ -159,11 +159,233 @@ function showUpdateModal(name, description, createTime) {
 
 // 删除项目
 function deleteProject(button) {
-    const documentItem = button.parentElement; // 获取到包含按钮的整个项目元素
+    const documentItem = button.parentElement; // 到包含按钮的整个项目元素
     documentList.removeChild(documentItem); // 从文档中移除该项目元素
 }
+
+// 检查登录状态
+function checkLogin() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login/login.html';
+    }
+}
+
+// 获取项目列表
+async function fetchProjects() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login/login.html';
+            return;
+        }
+
+        const response = await fetch('http://localhost:5000/api/projects', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        
+        if (response.status === 401) {
+            window.location.href = 'login/login.html';
+            return;
+        }
+        
+        const data = await response.json();
+        renderProjects(data.projects);
+    } catch (error) {
+        
+    }
+}
+
+// 渲染项目列表
+function renderProjects(projects) {
+    const documentList = document.getElementById('documentList');
+    documentList.innerHTML = '';
+    
+    projects.forEach(project => {
+        const documentItem = document.createElement('div');
+        documentItem.className = 'document-item';
+        documentItem.innerHTML = `
+            <div class="details">
+                <a href="project.html?projectId=${project.id}" class="name" style="text-decoration: none; color: inherit;">
+                    <b>${project.name}</b>
+                </a>
+                <span class="timestamp">${new Date(project.created_at).toLocaleString()}</span>
+            </div>
+            <button class="open-button" onclick="window.location.href='project.html?projectId=${project.id}'">打开项目</button>
+            <button class="xijie-button" 
+                style="background-color: #fff; color: #606266; border: 0.5px solid gray;" 
+                onclick="showUpdateModal('${project.id}', '${project.name}', '${project.description}', '${project.created_at}', '${project.updated_at}')">
+                项目详细
+            </button>
+            <button class="delete-button" onclick="deleteProject('${project.id}')">删除项目</button>
+        `;
+        documentList.appendChild(documentItem);
+    });
+}
+
+// 创建新项目
+async function createProject() {
+    const projectName = document.getElementById('projectName').value;
+    const projectDescription = document.getElementById('projectDescription').value;
+    
+    if (!projectName) {
+        alert('项目名称不能为空');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/projects', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                name: projectName,
+                description: projectDescription
+            })
+        });
+        
+        if (response.ok) {
+            modal.style.display = 'none';
+            document.getElementById('projectName').value = '';
+            document.getElementById('projectDescription').value = '';
+            await fetchProjects();
+        } else {
+            const data = await response.json();
+            alert(data.error || '创建项目失败');
+        }
+    } catch (error) {
+        console.error('创建项目失败:', error);
+        alert('创建项目失败，请稍后重试');
+    }
+}
+
+// 显示项目详情
+async function showUpdateModal(projectId, name, description, createTime, updateTime) {
+    const nameInput = document.getElementById('updateProjectName');
+    nameInput.value = name;
+    nameInput.removeAttribute('disabled');
+    nameInput.classList.remove('readonly');
+    
+    document.getElementById('updateProjectDescription').value = description || '';
+    document.getElementById('createTime').value = new Date(createTime).toLocaleString();
+    document.getElementById('updateTime').value = new Date(updateTime).toLocaleString();
+    
+    document.getElementById('updateModal').setAttribute('data-project-id', projectId);
+    updateModal.style.display = 'flex';
+}
+
+// 更新项目
+async function updateProject() {
+    const projectId = document.getElementById('updateModal').getAttribute('data-project-id');
+    const description = document.getElementById('updateProjectDescription').value;
+    const name = document.getElementById('updateProjectName').value;
+    
+    if (!name) {
+        alert('项目名称不能为空');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                name: name,
+                description: description
+            })
+        });
+        
+        if (response.ok) {
+            updateModal.style.display = 'none';
+            await fetchProjects();
+        } else {
+            const data = await response.json();
+            alert(data.error || '更新项目失败');
+        }
+    } catch (error) {
+        console.error('更新项目失败:', error);
+        alert('更新项目失败，请稍后重试');
+    }
+}
+
+// 删除项目
+async function deleteProject(projectId) {
+    if (!confirm('确定要删除该项目吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            await fetchProjects();
+        } else {
+            const data = await response.json();
+            alert(data.error || '删除项目失败');
+        }
+    } catch (error) {
+        console.error('删除项目失败:', error);
+        alert('删除项目失败，请稍后重试');
+    }
+}
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', () => {
+    checkLogin();
+    fetchProjects();
+    
+    // 绑定事件处理函数
+    const openModalButton = document.getElementById('openModal');
+    const modal = document.getElementById('myModal');
+    const closeModalButton = document.getElementById('closeModal');
+    const cancelButton = document.getElementById('cancelButton');
+    const createProjectButton = document.getElementById('createProjectButton');
+    const updateProjectButton = document.getElementById('updateProjectButton');
+    const closeUpdateModal = document.getElementById('closeUpdateModal');
+    const shipButton = document.getElementById('shipButton');
+    
+    openModalButton.onclick = () => modal.style.display = 'flex';
+    closeModalButton.onclick = () => modal.style.display = 'none';
+    cancelButton.onclick = () => modal.style.display = 'none';
+    createProjectButton.onclick = createProject;
+    updateProjectButton.onclick = updateProject;
+    closeUpdateModal.onclick = () => updateModal.style.display = 'none';
+    shipButton.onclick = () => updateModal.style.display = 'none';
+    
+    // 点击模态框外部关闭模态框
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+        if (event.target === updateModal) {
+            updateModal.style.display = 'none';
+        }
+    };
+});
 
     </script>
 </body>
 
 </html>
+

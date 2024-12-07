@@ -68,8 +68,8 @@ function refreshCaptcha() {
     drawCaptcha(canvas, captchaValue);
 }
 
-// 添加登录处理函数
-function handleLogin(event) {
+// 修改登录处理函数
+async function handleLogin(event) {
     event.preventDefault();
     
     const username = document.getElementById('username').value;
@@ -83,13 +83,37 @@ function handleLogin(event) {
         return false;
     }
     
-    // TODO: 在这里添加登录逻辑
-    console.log('登录信息:', { username, password });
+    try {
+        const response = await fetch('http://localhost:5000/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // 保存token和user_id到localStorage
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user_id', data.user_id);
+            
+            // 跳转到项目管理页面
+            window.location.href = '../index.html';
+        } else {
+            alert(data.error || '登录失败');
+        }
+    } catch (error) {
+        console.error('登录错误:', error);
+        alert('登录失败，请稍后重试');
+    }
+    
     return false;
 }
 
-// 添加注册处理函数
-function handleRegister(event) {
+// 修改注册处理函数
+async function handleRegister(event) {
     event.preventDefault();
     
     const username = document.getElementById('username').value;
@@ -110,8 +134,28 @@ function handleRegister(event) {
         return false;
     }
     
-    // TODO: 在这里添加注册逻辑
-    console.log('注册信息:', { username, email, password });
+    try {
+        const response = await fetch('http://localhost:5000/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('注册成功，请登录');
+            window.location.href = 'login.html';
+        } else {
+            alert(data.error || '注册失败');
+        }
+    } catch (error) {
+        console.error('注册错误:', error);
+        alert('注册失败，请稍后重试');
+    }
+    
     return false;
 }
 

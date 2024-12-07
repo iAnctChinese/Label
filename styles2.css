@@ -23,6 +23,24 @@ header {
     color: #41466E;
 }
 
+.management-link {
+    text-decoration: none;
+    margin-right: 20px;
+}
+
+.management-link span {
+    display: inline-block;
+    background-color: #41466E;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.management-link span:hover {
+    background-color: #363956;
+}
+
 .document-management {
     flex: 1.5;
     text-align: left;
@@ -34,6 +52,7 @@ header {
     color: white;
     padding: 5px 10px;
     border-radius: 5px;
+    font-weight: bold;
 }
 
 .container {
