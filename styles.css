@@ -14,6 +14,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    height: 100vh;
+    overflow: hidden;
 }
 
 header {
@@ -22,6 +24,12 @@ header {
     width: 100%;
     display: flex;
     align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    height: 80px;
+    box-sizing: border-box;
 }
 
 .logo {
@@ -329,17 +337,23 @@ header {
     width: calc(100% - 330px);
     padding: 15px;
     transition: all 0.3s ease;
+    height: calc(100vh - 80px);
+    overflow: hidden;
+    position: fixed;
+    top: 80px;
 }
 
 #knowledge-graph {
-    position: relative;
-    margin-left: 300px;
+    position: fixed;
+    left: 300px;
+    top: 80px;
     width: calc(100% - 300px);
     height: calc(100vh - 80px);
     background: white;
     border: none;
-    margin-top: 0;
+    margin: 0;
     display: none;
+    overflow: hidden;
 }
 
 #loading-spinner {
@@ -375,8 +389,10 @@ header {
     box-sizing: border-box;
     background: white;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    white-space: pre-wrap;  /* 保持原始格式 */
-    word-wrap: break-word;  /* 确保长单词会换行 */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .text-area:hover, #editable-result:hover {
@@ -741,7 +757,7 @@ span.highlight-NEWADD:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-/* 修改状态标记样式��使其始终显示 */
+/* 修改状态标记样式使其始终显示 */
 span[data-status="unchecked"] {
     position: relative;  /* 确保相对定位 */
 }
@@ -814,10 +830,54 @@ span[data-status="unchecked"]::before {
 
 /* 地图容器样式 */
 #map-container {
-    position: relative;
-    background: white;
-    border: none;
-    margin-top: 0;
+    position: fixed;
+    left: 300px;
+    top: 80px;
+    width: calc(100% - 300px);
+    height: calc(100vh - 80px);
+    margin: 0;
+    padding: 0;
+    z-index: 100;
+    background-color: #fff;
+    border: 1px solid #e1e1e1;
+    display: none;
+    visibility: visible !important;
+}
+
+/* 确保地图内部元素可见 */
+#map-container * {
+    visibility: visible !important;
+}
+
+/* 修改地图控件样式 */
+.BMap_stdMpCtrl {
+    z-index: 1000 !important;
+}
+
+.BMap_cpyCtrl {
+    display: none !important;
+}
+
+.anchorBL {
+    display: none !important;
+}
+
+/* 修改地图标记的样式 */
+.BMap_bubble_title {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    padding: 5px 0;
+}
+
+.BMap_bubble_content {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.5;
+}
+
+.BMap_bubble_content p {
+    margin: 5px 0;
 }
 
 /* 地点列表样式 */
@@ -858,4 +918,50 @@ span[data-status="unchecked"]::before {
 .location-name {
     font-size: 14px;
     color: var(--text-primary);
+}
+
+.person-list {
+    padding: 16px;
+}
+
+.person-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.person-item:hover {
+    background: #f8f8f8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.person-index {
+    width: 24px;
+    height: 24px;
+    background: #41466E;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    margin-right: 12px;
+}
+
+.person-name {
+    font-size: 14px;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.location-count {
+    font-size: 12px;
+    color: var(--text-secondary);
 }

@@ -862,7 +862,6 @@ function handleNavButtonClick(button) {
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.nav-button').forEach(button => {
         button.addEventListener('click', function() {
-            // 获取按钮文本，去除前后空格
             const currentMode = this.textContent.trim();
             const previousMode = document.querySelector('.nav-button.active').textContent.trim();
             
@@ -900,6 +899,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else if (currentMode.includes('知识图谱')) {
                     showKnowledgeGraph();
+                } else if (currentMode.includes('地图轨迹')) {
+                    showLocationTrajectory();
                 } else if (currentMode.includes('导出数据')) {
                     exportAllData();
                 }
@@ -1063,10 +1064,19 @@ function deleteEntityFromList(button, entityText, category) {
 
 // 修改返回结构标注页面的函数
 function returnToStructureAnnotation() {
-    // 隐藏知识图谱（如果显示的话）
+    // 隐藏知识图谱和地图（如果显示的话）
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer) {
         graphContainer.style.display = 'none';
+    }
+    
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+        mapContainer.style.display = 'none';
+        // 清除地图实例
+        if (baiduMap) {
+            baiduMap.clearOverlays();
+        }
     }
     
     // 显示容器
@@ -1226,10 +1236,11 @@ function setEntityStatus(entityText, category, status, menu) {
     });
 }
 
-let map = null;
-let geocoder = null;
-let markers = [];
+// 修改地图相关的全局变量
+let baiduMap = null;
+let mapMarkers = [];
 let polyline = null;
+let personRoutes = [];
 
 async function showLocationTrajectory() {
     const editableDiv = document.getElementById('editable-result');
@@ -1238,57 +1249,56 @@ async function showLocationTrajectory() {
         return;
     }
 
-    // 显示加载动画
-    document.getElementById('loading-spinner').style.display = 'block';
-    toggleButtons(true);
-
     try {
-        // 隐藏文本编辑区域、知识图谱和侧边栏
+        // 显示加载动画
+        document.getElementById('loading-spinner').style.display = 'block';
+        toggleButtons(true);
+
+        // 获取人物轨迹数据
+        const response = await fetch('http://localhost:5000/analyze_person_locations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: editableDiv.innerText,
+                entities: entityData
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('获取人物轨迹失败');
+        }
+
+        const data = await response.json();
+        personRoutes = data.person_routes;
+
+        // 隐藏其他容器
         const container = document.querySelector('.container');
         container.style.display = 'none';
         const graphContainer = document.getElementById('knowledge-graph');
         graphContainer.style.display = 'none';
-        const sidebar = document.getElementById('sidebar');
-        sidebar.style.display = 'none';
 
-        // 移除已存在的地图容器
-        const existingMapContainer = document.getElementById('map-container');
-        if (existingMapContainer) {
-            existingMapContainer.remove();
-        }
+        // 显示地图容器
+        const mapContainer = document.getElementById('map-container');
+        mapContainer.style.display = 'block';
 
-        // 创建新的地图容器
-        const mapContainer = document.createElement('div');
-        mapContainer.id = 'map-container';
-        mapContainer.style.cssText = `
-            margin-left: 0;
-            width: 100%;
-            height: calc(100vh - 80px);
-        `;
-        document.body.appendChild(mapContainer);
+        // 确保地图容器可见后再初始化地图
+        setTimeout(() => {
+            if (!baiduMap) {
+                baiduMap = new BMap.Map('map-container');
+                const point = new BMap.Point(116.404, 39.915);
+                baiduMap.centerAndZoom(point, 5);
+                baiduMap.enableScrollWheelZoom();
+                baiduMap.addControl(new BMap.NavigationControl());
+                baiduMap.addControl(new BMap.ScaleControl());
+                baiduMap.addControl(new BMap.OverviewMapControl());
+                baiduMap.addControl(new BMap.MapTypeControl());
+            } else {
+                baiduMap.clearOverlays();
+            }
 
-        // 每次都重新初始化地图
-        map = new AMap.Map('map-container', {
-            zoom: 4,
-            center: [116.397428, 39.90923]
-        });
-        geocoder = new AMap.Geocoder();
-
-        // 获取所有地名实体
-        const locations = entityData['地名'] || [];
-        
-        // 清除现有标记和路线
-        clearMapOverlays();
-
-        // 获取地点坐标并绘制轨迹
-        const coordinates = await getLocationsCoordinates(locations);
-        if (coordinates.length > 0) {
-            drawTrajectory(coordinates, locations);
-            // 调整地图视野以包含所有标记点
-            map.setFitView();
-        } else {
-            alert('未找到有效的地理坐标');
-        }
+            // 更新侧边栏显示人物列表
+            updateSidebarPersons(personRoutes);
+        }, 100);
 
     } catch (error) {
         console.error('地图轨迹生成错误:', error);
@@ -1296,147 +1306,150 @@ async function showLocationTrajectory() {
     } finally {
         document.getElementById('loading-spinner').style.display = 'none';
         toggleButtons(false);
-        
-        // 确保导航按钮可以点击
-        document.querySelectorAll('.nav-button').forEach(button => {
-            button.style.pointerEvents = 'auto';
-            button.style.opacity = '1';
-        });
     }
 }
 
-function clearMapOverlays() {
-    // 清除现有标记
-    markers.forEach(marker => marker.setMap(null));
-    markers = [];
-    
-    // 清除现有路线
-    if (polyline) {
-        polyline.setMap(null);
-        polyline = null;
-    }
-}
-
-async function getLocationsCoordinates(locations) {
-    const coordinates = [];
-    
-    for (const location of locations) {
-        try {
-            const result = await new Promise((resolve, reject) => {
-                geocoder.getLocation(location, (status, result) => {
-                    if (status === 'complete' && result.geocodes.length) {
-                        resolve(result.geocodes[0].location);
-                    } else {
-                        reject(new Error(`未找到地点: ${location}`));
-                    }
-                });
-            });
-            
-            coordinates.push({
-                name: location,
-                position: [result.lng, result.lat]
-            });
-        } catch (error) {
-            console.warn(`地理编码失败: ${location}`, error);
-        }
-    }
-    
-    return coordinates;
-}
-function drawTrajectory(coordinates, locations) {
-    // 添加标记点
-    coordinates.forEach((coord, index) => {
-        const marker = new AMap.Marker({
-            position: coord.position,
-            title: coord.name,
-            label: {
-                content: `${index + 1}. ${coord.name}`,
-                direction: 'top'
-            }
-        });
-        
-        marker.setMap(map);
-        markers.push(marker);
-    });
-
-    // 绘制路线
-    if (coordinates.length > 1) {
-        const path = coordinates.map(coord => coord.position);
-        polyline = new AMap.Polyline({
-            path: path,
-            strokeColor: "#3366FF",
-            strokeWeight: 3,
-            strokeOpacity: 0.8,
-            showDir: true
-        });
-        
-        polyline.setMap(map);
-    }
-}
-
-function updateSidebarLocations(locations) {
-    document.getElementById('sidebar-content').innerHTML = `
-        <div class="location-list">
-            <div class="entity-group-title">地点轨迹</div>
-            ${locations.map((location, index) => `
-                <div class="location-item">
-                    <span class="location-index">${index + 1}</span>
-                    <span class="location-name">${location}</span>
+function updateSidebarPersons(routes) {
+    const sidebarContent = document.getElementById('sidebar-content');
+    sidebarContent.innerHTML = `
+        <div class="person-list">
+            <div class="entity-group-title">人物轨迹</div>
+            ${routes.map((route, index) => `
+                <div class="person-item" onclick="showPersonRoute('${route.person}')">
+                    <span class="person-index">${index + 1}</span>
+                    <span class="person-name">${route.person}</span>
+                    <span class="location-count">(${route.locations.length}个地点)</span>
                 </div>
             `).join('')}
         </div>
     `;
 }
 
-// 修改导航按钮点击事件处理
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.nav-button').forEach(button => {
-        button.addEventListener('click', function() {
-            const currentMode = this.textContent.trim();
-            const previousMode = document.querySelector('.nav-button.active').textContent.trim();
-            
-            // 处理按钮样式
-            handleNavButtonClick(this);
-            
-            if (currentMode.includes('地图轨迹')) {
-                showLocationTrajectory();
-            } else {
-                // 如果之前是地图轨迹页面，先返回
-                if (document.getElementById('map-container')) {
-                    returnFromMapView();
-                }
+function showPersonRoute(person) {
+    if (!baiduMap) {
+        console.error('地图未初始化');
+        return;
+    }
+
+    // 清除现有标记和路线
+    clearMapOverlays();
+
+    // 获取该人物的轨迹
+    const route = personRoutes.find(r => r.person === person);
+    if (!route) return;
+
+    // 使用百度地图地理编码服务
+    const geocoder = new BMap.Geocoder();
+    const points = [];
+
+    // 处理每个地点
+    route.locations.forEach((location, index) => {
+        // 处理地址格式
+        let searchAddress = location.full_address;
+        
+        // 如果是省级地址，确保使用省会城市
+        if (location.level === "省") {
+            const provinceMap = {
+                '浙江': '杭州市',
+                '江苏': '南京市',
+                '安徽': '合肥市',
+                '福建': '福州市',
+                '山东': '济南市',
+                '河南': '郑州市',
+                '湖北': '武汉市',
+                '湖南': '长沙市',
+                '广东': '广州市',
+                '海南': '海口市',
+                '四川': '成都市',
+                '贵州': '贵阳市',
+                '云南': '昆明市',
+                '陕西': '西安市',
+                '甘肃': '兰州市',
+                '青海': '西宁市',
+                '河北': '石家庄市',
+                '山西': '太原市',
+                '吉林': '长春市',
+                '黑龙江': '哈尔滨市',
+                '辽宁': '沈阳市'
+            };
+
+            // 提取省份名称（去掉"省"字）
+            const provinceName = location.name.replace('省', '');
+            if (provinceMap[provinceName]) {
+                searchAddress = `${location.name}${provinceMap[provinceName]}`;
+            }
+        }
+
+        // 确保地址格式规范
+        searchAddress = searchAddress
+            .replace(/自治区/g, '')  // 移除"自治区"
+            .replace(/特别行政区/g, '') // 移除"特别行政区"
+            .replace(/维吾尔/g, '')  // 移除民族名称
+            .replace(/壮族/g, '')
+            .replace(/回族/g, '')
+            .trim();
+
+        console.log(`正在解析地址: ${searchAddress}`); // 调试日志
+
+        geocoder.getPoint(searchAddress, function(point) {
+            if (point) {
+                console.log(`成功解析地址: ${searchAddress}`, point); // 调试日志
+                points.push(point);
+
+                // 创建标记
+                const marker = new BMap.Marker(point);
+                const label = new BMap.Label(`${index + 1}. ${location.name}`, {
+                    offset: new BMap.Size(20, -10)
+                });
+                marker.setLabel(label);
                 
-                // 执行相应页面的逻辑
-                if (currentMode.includes('实体标注')) {
-                    updateSidebarEntities();
-                } else if (currentMode.includes('关系标注')) {
-                    showRelationAnnotation();
-                } else if (currentMode.includes('知识图谱')) {
-                    showKnowledgeGraph();
-                } else if (currentMode.includes('结构标注')) {
-                    returnToStructureAnnotation();
-                } else if (currentMode.includes('导出数据')) {
-                    exportAllData();
+                mapMarkers.push(marker);
+                baiduMap.addOverlay(marker);
+
+                // 添加信息窗口
+                const infoWindow = new BMap.InfoWindow(`
+                    <div>
+                        <p>地点：${location.name}</p>
+                        <p>完整地址：${location.full_address}</p>
+                        <p>人物：${person}</p>
+                    </div>
+                `);
+                marker.addEventListener('click', function() {
+                    this.openInfoWindow(infoWindow);
+                });
+
+                // 如果所有点都已添加，则绘制路线
+                if (points.length === route.locations.length) {
+                    // 绘制路线
+                    polyline = new BMap.Polyline(points, {
+                        strokeColor: "#3366FF",
+                        strokeWeight: 3,
+                        strokeOpacity: 0.8
+                    });
+                    
+                    baiduMap.addOverlay(polyline);
+                    
+                    // 调整视图以显示所有点
+                    baiduMap.setViewport(points);
                 }
+            } else {
+                console.error(`无法解析地址: ${searchAddress}`); // 调试日志
             }
         });
     });
-});
+}
 
-// 添加返回其他页面的函数
-function returnFromMapView() {
-    // 移除地图容器
-    const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
-        mapContainer.remove();
+function clearMapOverlays() {
+    // 清除现有标记
+    mapMarkers.forEach(marker => {
+        baiduMap.removeOverlay(marker);
+    });
+    mapMarkers = [];
+    
+    // 清除现有路线
+    if (polyline) {
+        baiduMap.removeOverlay(polyline);
+        polyline = null;
     }
-    
-    // 显示侧边栏
-    const sidebar = document.getElementById('sidebar');
-    sidebar.style.display = 'block';
-    
-    // 显示文本编辑区域
-    const container = document.querySelector('.container');
-    container.style.display = 'block';
 }
 
