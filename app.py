@@ -574,6 +574,95 @@ def extract_relations():
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
+
+@app.route('/analyze_person_locations', methods=['POST'])
+def analyze_person_locations():
+    try:
+        data = request.get_json()
+        text = data.get("text")
+        entities = data.get("entities")
+        
+        if not text or not entities:
+            return jsonify({"error": "文本和实体数据不能为空"}), 400
+            
+        # 修改提示词，要求输出更详细的地址
+        prompt = f"""
+        分析下面文本中每个人物的行动轨迹：
+        
+        文本：{text}
+        
+        已识别的实体：
+        人名：{json.dumps(entities.get('人名', []), ensure_ascii=False)}
+        地名：{json.dumps(entities.get('地名', []), ensure_ascii=False)}
+        
+        请仔细分析文本上下文，对于每个地名，尽可能推断出其完整的行政区划信息（省、市、县/区）。
+        
+        请严格按照以下JSON格式输出每个人物依次经过的地点：
+        {{
+            "person_routes": [
+                {{
+                    "person": "人名",
+                    "locations": [
+                        {{
+                            "name": "原文地名",
+                            "full_address": "完整地址（省市县/区）",
+                            "level": "地名级别(省/市/县/区)"
+                        }}
+                    ]
+                }}
+            ]
+        }}
+        
+        注意：
+        1. 地名必须在已识别的地名实体中
+        2. 将古代地名转为现代地名，如不能则丢弃
+        2. 如果是省级地名，尽量推断具体城市
+        3. 如果是市级地名，尽量推断具体区县
+        4. 按时间顺序排列地点
+        5. 只输出JSON格式，不要其他解释
+        """
+        
+        response = client.chat.completions.create(
+            model="glm-4",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        result = response.choices[0].message.content
+        
+        # 提取JSON部分
+        start_index = result.find("{")
+        end_index = result.rfind("}")
+        if start_index == -1 or end_index == -1:
+            return jsonify({"error": "返回格式无效"}), 500
+            
+        json_content = result[start_index:end_index + 1]
+        routes_data = json.loads(json_content)
+        
+        # 验证返回的地点是否都在已识别的地名实体中
+        valid_locations = set(entities.get('地名', []))
+        validated_routes = {"person_routes": []}
+        
+        for route in routes_data.get("person_routes", []):
+            validated_locations = [
+                loc for loc in route.get("locations", [])
+                if loc["name"] in valid_locations
+            ]
+            if validated_locations:  # 只添加有有效地点的路线
+                validated_routes["person_routes"].append({
+                    "person": route["person"],
+                    "locations": validated_locations
+                })
+        
+        return jsonify(validated_routes)
+        
+    except json.JSONDecodeError as e:
+        return jsonify({"error": f"JSON解析错误: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"未预期的错误: {str(e)}"}), 500
+
+# 启动服务
 # 启动服务
 if __name__ == '__main__':
     app.run(debug=True)
