@@ -15,7 +15,7 @@ CORS(app, supports_credentials=True)
 app.secret_key = os.urandom(24)  # 用于session加密
 JWT_SECRET = "your-secret-key"  # JWT密钥
 # 初始化 ZhipuAI 客户端
-API_KEY = "24a463e3442c20746ae8574b5d6f86a7.DbjlsnN5MUX7RZUQ"  # 替换为你的实际 API Key
+API_KEY = "c990f03ea0d38bae0ce65801ff8203de.LYIXn4VC9CK6ABer"  # 替换为你的实际 API Key
 client = ZhipuAI(api_key=API_KEY)
 # 初始化数据库
 init_db()
