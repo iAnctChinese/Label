@@ -20,20 +20,23 @@ let entityTypes = ['人名', '地名', '时间', '职官', '书名'];
 
 // 基础功能
 function updateWordCount() {
-    const text = document.getElementById('text-area').value;
-    // 获取当前文本并保留原始格式
-    const currentText = text;
+    // 获取当前显示的文本内容
+    const textArea = document.getElementById('text-area');
+    const editableDiv = document.getElementById('editable-result');
+    let text = '';
     
-    // 去除空格和回车后进行比较
-    const cleanCurrentText = currentText.replace(/[\s\n]/g, '');
-    const cleanOriginalText = originalText.replace(/[\s\n]/g, '');
-    
-    // 如果文本发生改变，清除缓存并更新originalText
-    if (cleanCurrentText !== cleanOriginalText) {
-        clearCache();
-        originalText = currentText; // 保存包含格式的原始文本
+    if (textArea && textArea.style.display !== 'none') {
+        text = textArea.value;
+    } else if (editableDiv) {
+        // 获取可编辑div的纯文本内容（去除HTML标签）
+        text = editableDiv.innerText;
     }
-    document.getElementById('word-count').innerText = `已输入 ${cleanCurrentText.length} 字`;
+
+    // 去除空格和换行符后计算字数
+    const cleanText = text.replace(/[\s\n]/g, '');
+    
+    // 更新显示
+    document.getElementById('word-count').innerText = `已输入 ${cleanText.length} 字`;
 }
 
 function copyText() {
@@ -75,7 +78,7 @@ async function performNER() {
     }
 
     if (!originalText) {
-        alert('请输入文本进行实体识别');
+        alert('���输入文本进行实体识别');
         return;
     }
 
@@ -294,10 +297,19 @@ function handleDeleteAllSameEntities(entityText, category, button) {
         }
     });
 
+    // 从entityData中删除实体
+    const index = entityData[category].indexOf(entityText);
+    if (index > -1) {
+        entityData[category].splice(index, 1);
+    }
+
+    // 更新annotatedText
+    annotatedText = editableDiv.innerHTML;
+
     // 更新侧边栏的实体统计
     updateSidebarEntities();
 
-    // 如果识图谱正在显示，则更新图谱
+    // 如果知识图谱正在显示，则更新图谱
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer.style.display === 'block') {
         showKnowledgeGraph();
@@ -312,14 +324,26 @@ function handleEntityDelete(entityText, category, button) {
         menu.remove();
     }
 
-    // 使用保存的实体元素
-    if (clickedEntity) {
-        const textNode = document.createTextNode(clickedEntity.textContent);
-        clickedEntity.parentNode.replaceChild(textNode, clickedEntity);
-        clickedEntity = null; // 清除引用
+    // 从文本中删除所有相同的标注
+    const editableDiv = document.getElementById('editable-result');
+    const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
+    spans.forEach(span => {
+        if (span.textContent === entityText) {
+            const textNode = document.createTextNode(span.textContent);
+            span.parentNode.replaceChild(textNode, span);
+        }
+    });
+
+    // 从entityData中删除实体
+    const index = entityData[category].indexOf(entityText);
+    if (index > -1) {
+        entityData[category].splice(index, 1);
     }
 
-    // 更新边栏的实体统计
+    // 更新annotatedText
+    annotatedText = editableDiv.innerHTML;
+
+    // 更新侧边栏的实体统计
     updateSidebarEntities();
 
     // 如果知识图谱正在显示，则更新图谱
@@ -440,7 +464,7 @@ async function showRelationAnnotation() {
     }
 }
 
-// 添加删除关系的函数
+// 添加删除关系函数
 function deleteRelation(button) {
     const relationItem = button.closest('.relation-item');
     const index = Array.from(relationItem.parentElement.children).indexOf(relationItem) - 1;
@@ -598,7 +622,7 @@ async function showKnowledgeGraph() {
                     type: 'curvedCW',
                     roundness: 0.2
                 },
-                length: 300  // 增加边的长度，使节点之间距���更远
+                length: 300  // 增加边的长度，使节点之间距更远
             },
             physics: {
                 enabled: true,
@@ -619,7 +643,7 @@ async function showKnowledgeGraph() {
             },
             layout: {
                 improvedLayout: true,
-                randomSeed: 42      // 添加随机种子以获得一致的布局
+                randomSeed: 42      // 添加随机种子以获得致的布局
             }
         };
 
@@ -841,18 +865,139 @@ function exportAllData() {
     URL.revokeObjectURL(url);
 }
 
-// 添加返回实体标注页面的函数
+// 修改返回实体标注页面的函数
 function returnToEntityAnnotation() {
-    // 隐藏知识图谱
+    // 隐藏知识图谱和地图
     const graphContainer = document.getElementById('knowledge-graph');
-    graphContainer.style.display = 'none';
+    if (graphContainer) {
+        graphContainer.style.display = 'none';
+    }
     
-    // 显示文本编辑区域
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+        mapContainer.style.display = 'none';
+        if (baiduMap) {
+            baiduMap.clearOverlays();
+        }
+    }
+    
+    // 显示容器
     const container = document.querySelector('.container');
     container.style.display = 'block';
     
     // 更新侧边栏显示实体列表
     updateSidebarEntities();
+    
+    // 确保文本框不可编辑
+    const editableDiv = document.getElementById('editable-result');
+    if (editableDiv) {
+        editableDiv.contentEditable = 'false';
+        editableDiv.addEventListener('input', preventEdit);
+        
+        // 如果已经进行过实体标注（通过检查是否存在实体数据）
+        if (Object.values(entityData).some(arr => arr.length > 0)) {
+            // 启用文本选择功能
+            enableTextSelection(editableDiv);
+            
+            // 为已标注的实体添加右键菜单事件
+            const entitySpans = editableDiv.querySelectorAll('span[data-category]');
+            entitySpans.forEach(span => {
+                span.addEventListener('contextmenu', function(event) {
+                    handleEntityClick(this);
+                    event.preventDefault();
+                });
+            });
+        }
+    }
+    
+    const textArea = document.getElementById('text-area');
+    if (textArea) {
+        textArea.readOnly = true;
+        textArea.addEventListener('input', preventEdit);
+    }
+}
+
+// 修改启文本选择的函数
+function enableTextSelection(element) {
+    if (!element) return;
+    
+    // 检查当前是否在关系标注页面
+    const currentMode = document.querySelector('.nav-button.active').textContent.trim();
+    if (currentMode.includes('关系标注')) {
+        // 在关系标注页面禁用文本选择
+        element.style.userSelect = 'none';
+        element.style.webkitUserSelect = 'none';
+        element.style.mozUserSelect = 'none';
+        element.style.msUserSelect = 'none';
+        return;
+    }
+    
+    // 移除之前的事件监听器（如果存在）
+    if (element.textSelectionHandler) {
+        element.removeEventListener('mouseup', element.textSelectionHandler);
+    }
+    
+    // 添加新的事件监听器
+    element.textSelectionHandler = function(event) {
+        handleTextSelection.call(this, event);
+    };
+    element.addEventListener('mouseup', element.textSelectionHandler);
+    
+    // 确保元素可以选择文本，但不可编辑
+    element.style.userSelect = 'text';
+    element.style.webkitUserSelect = 'text';
+    element.style.mozUserSelect = 'text';
+    element.style.msUserSelect = 'text';
+    element.contentEditable = 'false';
+    element.addEventListener('input', preventEdit);
+}
+
+// 修改处理文本选择的���数
+function handleTextSelection() {
+    // 检查当前是否在关系标注页面
+    const currentMode = document.querySelector('.nav-button.active').textContent.trim();
+    if (currentMode.includes('关系标注')) {
+        return; // 在关系标注页面直接��回，不处理文本选择
+    }
+    
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    
+    // 检查是否包含标点符号
+    if (selectedText && !/[，。！？；：、]/.test(selectedText)) {
+        // 获取选择的范围
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        // 为选中的文本添加背景色
+        const span = document.createElement('span');
+        span.style.backgroundColor = '#e6f3ff';
+        range.surroundContents(span);
+        
+        // 创建标注选项菜单
+        showEntityMenu(rect.left, rect.bottom, selectedText, range);
+        
+        // 当菜单关闭时移除背景色并确保文本框保持不可编辑
+        document.addEventListener('mousedown', function removeHighlight(e) {
+            const menu = document.querySelector('.entity-selection-menu');
+            if (!menu || !menu.contains(e.target)) {
+                // 如果没有进行实体标注，则恢复原始文本
+                if (span.getAttribute('data-category') === null) {
+                    const text = span.textContent;
+                    span.parentNode.replaceChild(document.createTextNode(text), span);
+                }
+                
+                // 确保文本框保持不可编辑状态
+                const editableDiv = document.getElementById('editable-result');
+                if (editableDiv) {
+                    editableDiv.contentEditable = 'false';
+                    editableDiv.addEventListener('input', preventEdit);
+                }
+                
+                document.removeEventListener('mousedown', removeHighlight);
+            }
+        });
+    }
 }
 
 // 添加返回关系标注页面的函数
@@ -875,79 +1020,108 @@ function handleNavButtonClick(button) {
     document.querySelectorAll('.nav-button').forEach(btn => {
         btn.classList.remove('active');
     });
-    // 为当前点击的按钮添加active类
+    // 为��前点击的按钮添加active类
     button.classList.add('active');
 }
 
 // 修改导航按钮点击事件处理
 document.addEventListener('DOMContentLoaded', function() {
+    // 初始化文本框状态
+    const editableDiv = document.getElementById('editable-result');
+    const textArea = document.getElementById('text-area');
+    const currentMode = document.querySelector('.nav-button.active').textContent.trim();
+
+    if (!currentMode.includes('结构标注')) {
+        if (editableDiv) {
+            editableDiv.contentEditable = 'false';
+            editableDiv.addEventListener('input', preventEdit);
+        }
+        if (textArea) {
+            textArea.readOnly = true;
+            textArea.addEventListener('input', preventEdit);
+        }
+    }
+
+    // 现有的导航按钮点击事件监听
     document.querySelectorAll('.nav-button').forEach(button => {
         button.addEventListener('click', function() {
             const currentMode = this.textContent.trim();
-            
-            // 处理按钮样式
+            const previousMode = document.querySelector('.nav-button.active').textContent.trim();
             handleNavButtonClick(this);
-            
-            // 获取可编辑区元素
-            const editableDiv = document.getElementById('editable-result');
-            const textArea = document.getElementById('text-area');
-            const autoRecognizeBtn = document.getElementById('auto-recognize-btn');
-            
-            // 根据不同模式显示/隐藏自动识别按钮
-            if (currentMode.includes('实体标注') || currentMode.includes('关系标注')) {
-                autoRecognizeBtn.style.display = 'inline';
-                
-                // 如果是从结构标注切换过来，需要保存文本内容
-                if (textArea && textArea.style.display !== 'none') {
-                    originalText = textArea.value.trim();
-                } else if (editableDiv) {
-                    // 保存带有标注的文本
-                    annotatedText = editableDiv.innerHTML;
+
+            // 隐藏地图容器
+            const mapContainer = document.getElementById('map-container');
+            if (mapContainer) {
+                mapContainer.style.display = 'none';
+                if (baiduMap) {
+                    baiduMap.clearOverlays();
                 }
-            } else {
-                autoRecognizeBtn.style.display = 'none';
             }
 
+            // 隐藏知识图谱
+            const graphContainer = document.getElementById('knowledge-graph');
+            if (graphContainer) {
+                graphContainer.style.display = 'none';
+            }
+
+            // 获取文本编辑区域容器
+            const container = document.querySelector('.container');
+
+            // 获取文本框元素
+            const editableDiv = document.getElementById('editable-result');
+            const textArea = document.getElementById('text-area');
+
+            // 根据不同模式执行相应操作
             if (currentMode.includes('实体标注')) {
-                // 切换到实体标注模式
+                container.style.display = 'block';
+                // 确保文本框不可编辑
                 if (editableDiv) {
-                    enableTextSelection(editableDiv);
-                    // 更新侧边栏显示实体列表
-                    updateSidebarEntities();
+                    editableDiv.contentEditable = 'false';
+                    editableDiv.addEventListener('input', preventEdit);
+                }
+                if (textArea) {
+                    textArea.readOnly = true;
+                    textArea.addEventListener('input', preventEdit);
+                }
+                returnToEntityAnnotation();
+            } else if (currentMode.includes('关系标注')) {
+                container.style.display = 'block';
+                // 确保文本框不可编辑
+                if (editableDiv) {
+                    editableDiv.contentEditable = 'false';
+                    editableDiv.addEventListener('input', preventEdit);
+                }
+                if (textArea) {
+                    textArea.readOnly = true;
+                    textArea.addEventListener('input', preventEdit);
+                }
+                showRelationAnnotationUI();
+            } else if (currentMode.includes('知识图谱')) {
+                container.style.display = 'none';
+                showKnowledgeGraph();
+            } else if (currentMode.includes('地图轨迹')) {
+                if (previousMode.includes('知识图谱')) {
+                    container.style.display = 'none';
+                    graphContainer.style.display = 'block';
                 } else {
-                    // 如果没有可编辑区域，创建一个
-                    returnToStructureAnnotation();
-                    const newEditableDiv = document.getElementById('editable-result');
-                    if (newEditableDiv) {
-                        enableTextSelection(newEditableDiv);
-                        // 更新侧边栏显示实体列表
-                        updateSidebarEntities();
-                    }
+                    container.style.display = 'block';
                 }
-            } else {
-                // 在其他模式下禁用文本选择功能
+                showLocationTrajectory();
+            } else if (currentMode.includes('导出数据')) {
+                container.style.display = 'block';
+                exportAllData();
+            } else if (currentMode.includes('结构标注')) {
+                container.style.display = 'block';
+                // 在结构标注页面启用编辑
                 if (editableDiv) {
-                    disableTextSelection(editableDiv);
+                    editableDiv.contentEditable = 'true';
+                    editableDiv.removeEventListener('input', preventEdit);
                 }
-                
-                if (currentMode.includes('结构标注')) {
-                    returnToStructureAnnotation();
-                } else if (currentMode.includes('关系标注')) {
-                    if (editableDiv) {
-                        // 切换到关系标注模式
-                        showRelationAnnotationUI();
-                    } else {
-                        // 如果没有可编辑区域，创建一个
-                        returnToStructureAnnotation();
-                        showRelationAnnotationUI();
-                    }
-                } else if (currentMode.includes('知识图谱')) {
-                    showKnowledgeGraph();
-                } else if (currentMode.includes('地图轨迹')) {
-                    showLocationTrajectory();
-                } else if (currentMode.includes('导出数据')) {
-                    exportAllData();
+                if (textArea) {
+                    textArea.readOnly = false;
+                    textArea.removeEventListener('input', preventEdit);
                 }
+                returnToStructureAnnotation();
             }
         });
     });
@@ -955,6 +1129,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 修改自动识别功能
 async function autoRecognize() {
+    const currentMode = document.querySelector('.nav-button.active').textContent.trim();
+    
+    // 在结构标注模式下，不执行任何操作
+    if (currentMode.includes('结构标注')) {
+        return;
+    }
+    
     const textArea = document.getElementById('text-area');
     const editableDiv = document.getElementById('editable-result');
     let text = '';
@@ -970,8 +1151,6 @@ async function autoRecognize() {
         alert('请输入文本进行识别');
         return;
     }
-    
-    const currentMode = document.querySelector('.nav-button.active').textContent.trim();
     
     // 显示加载动画
     document.getElementById('loading-spinner').style.display = 'block';
@@ -1031,6 +1210,10 @@ function returnToStructureAnnotation() {
         }
     }
     
+    // 获取当前模式
+    const currentMode = document.querySelector('.nav-button.active').textContent.trim();
+    const isStructureMode = currentMode.includes('结构标注');
+    
     // 更新文本框内容，保持原始格式
     container.innerHTML = `
         <div class="icons">
@@ -1038,12 +1221,20 @@ function returnToStructureAnnotation() {
             <img src="imges/复制文件.png" alt="复制" title="复制" onclick="copyText()">
             <img src="imges/剪切.png" alt="剪切" title="剪切" onclick="cutText()">
             <img src="imges/paste.png" alt="粘贴" title="粘贴" onclick="pasteText()">
-            <img src="imges/自动识别.png" alt="自动识别" title="自动识别" onclick="autoRecognize()" id="auto-recognize-btn" style="display: none;">
+            <img src="imges/自动识别.png" alt="自动识别" title="自动识别" onclick="autoRecognize()" id="auto-recognize-btn">
         </div>
         <div class="separator"></div>
-        <div class="annotated-text" id="editable-result" contenteditable="true">${currentText}</div>
+        <div class="annotated-text" id="editable-result" contenteditable="${isStructureMode}" ${!isStructureMode ? 'onInput="preventEdit(event)"' : ''}>${currentText}</div>
         <div class="word-count" id="word-count"></div>
     `;
+    
+    // 如果不是结构标注模式，添加事件监听器
+    if (!isStructureMode) {
+        const editableDiv = document.getElementById('editable-result');
+        if (editableDiv) {
+            editableDiv.addEventListener('input', preventEdit);
+        }
+    }
     
     // 更新字数统计
     const cleanText = currentText.replace(/<[^>]*>/g, '').replace(/[\s\n]/g, '');
@@ -1056,7 +1247,7 @@ function returnToStructureAnnotation() {
     }
 }
 
-// 添加只显示关系标注UI的函数，不执行识别
+// 修改显示关系标注UI的函数
 function showRelationAnnotationUI() {
     document.getElementById('sidebar-content').innerHTML = `
         <div class="relation-list">
@@ -1076,39 +1267,22 @@ function showRelationAnnotationUI() {
             `).join('')}
         </div>
     `;
-}
-
-// 添加处理文本选择的函数
-function handleTextSelection() {
-    const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
     
-    // 检查是否包含标点符号（至少包逗号和句号）
-    if (selectedText && !/[，。！？；：、]/.test(selectedText)) {
-        // 获取选择的范围
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        
-        // 为选中的文本添加背景色
-        const span = document.createElement('span');
-        span.style.backgroundColor = '#e6f3ff'; // 浅蓝背景
-        range.surroundContents(span);
-        
-        // 创建标注选项菜单
-        showEntityMenu(rect.left, rect.bottom, selectedText, range);
-        
-        // 当菜单关闭时移除背景色
-        document.addEventListener('mousedown', function removeHighlight(e) {
-            const menu = document.querySelector('.entity-selection-menu');
-            if (!menu || !menu.contains(e.target)) {
-                // 如果没有进行实体标注，则恢复原始文本
-                if (span.getAttribute('data-category') === null) {
-                    const text = span.textContent;
-                    span.parentNode.replaceChild(document.createTextNode(text), span);
-                }
-                document.removeEventListener('mousedown', removeHighlight);
-            }
-        });
+    // 确保文本框不可编辑且禁用文本选择
+    const editableDiv = document.getElementById('editable-result');
+    if (editableDiv) {
+        editableDiv.contentEditable = 'false';
+        editableDiv.addEventListener('input', preventEdit);
+        editableDiv.style.userSelect = 'none';
+        editableDiv.style.webkitUserSelect = 'none';
+        editableDiv.style.mozUserSelect = 'none';
+        editableDiv.style.msUserSelect = 'none';
+    }
+    
+    const textArea = document.getElementById('text-area');
+    if (textArea) {
+        textArea.readOnly = true;
+        textArea.addEventListener('input', preventEdit);
     }
 }
 
@@ -1178,7 +1352,7 @@ function annotateSelection(range, category) {
     span.className = getHighlightClass(category);
     span.setAttribute('data-category', category);
     
-    // 将选中的内容移动到新的span中
+    // 将选中的内移动到新的span中
     range.surroundContents(span);
     
     // 添加右键点击事件
@@ -1189,6 +1363,16 @@ function annotateSelection(range, category) {
     
     // 更新侧边栏
     updateSidebarEntities();
+    
+    // 确保文本框保持不可编辑状态
+    const editableDiv = document.getElementById('editable-result');
+    if (editableDiv) {
+        editableDiv.contentEditable = 'false';
+        editableDiv.addEventListener('input', preventEdit);
+    }
+    
+    // 保存带有标注的文本
+    annotatedText = editableDiv.innerHTML;
 }
 
 function deleteEntityFromList(button, entityText, category) {
@@ -1254,7 +1438,7 @@ async function showLocationTrajectory() {
         });
 
         if (!response.ok) {
-            throw new Error('获取人物轨迹失败');
+            throw new Error('获取人物迹失败');
         }
 
         const data = await response.json();
@@ -1333,10 +1517,10 @@ function showPersonRoute(person) {
 
     // 处理每个地点
     route.locations.forEach((location, index) => {
-        // 处理���址格式
+        // 处理地址格式
         let searchAddress = location.full_address;
         
-        // 如果是省地址，确保使用省会城市
+        // 如省地址，确保使用省会城市
         if (location.level === "省") {
             const provinceMap = {
                 '浙江': '杭州市',
@@ -1422,7 +1606,7 @@ function showPersonRoute(person) {
                     baiduMap.setViewport(points);
                 }
             } else {
-                console.error(`无法���析地址: ${searchAddress}`); // 调试日志
+                console.error(`无法解析地址: ${searchAddress}`); // 调试日志
             }
         });
     });
@@ -1442,42 +1626,111 @@ function clearMapOverlays() {
     }
 }
 
-// 添加启用文本选择的函数
-function enableTextSelection(element) {
-    if (!element) return;
-    
-    // 移除之前的事件监听器（如果存在）
-    if (element.textSelectionHandler) {
-        element.removeEventListener('mouseup', element.textSelectionHandler);
-    }
-    
-    // 添加新的事件监听器
-    element.textSelectionHandler = function(event) {
-        handleTextSelection.call(this, event);
-    };
-    element.addEventListener('mouseup', element.textSelectionHandler);
-    
-    // 确保元素可以选择文本
-    element.style.userSelect = 'text';
-    element.style.webkitUserSelect = 'text';
-    element.style.mozUserSelect = 'text';
-    element.style.msUserSelect = 'text';
+// 添加登出函数
+function logout() {
+    // 清除本地存储的用户信息
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    // 跳转到登录页面
+    window.location.href = './login/login.html';
 }
 
-// 添加禁用文本选择的函数
-function disableTextSelection(element) {
-    if (!element) return;
-    
-    // 移除事件监听器
-    if (element.textSelectionHandler) {
-        element.removeEventListener('mouseup', element.textSelectionHandler);
-        element.textSelectionHandler = null;
+// 添加阻止编辑的函数
+function preventEdit(event) {
+    event.preventDefault();
+    alert('只能在结构标注页面进行编辑');
+    // 恢复原始内容
+    if (this.tagName.toLowerCase() === 'textarea') {
+        this.value = this.defaultValue;
+    } else {
+        this.innerHTML = this.getAttribute('data-original-content') || this.innerHTML;
+    }
+}
+
+// 添加实体类型函数
+function addEntityType() {
+    const newType = prompt('请输入新的实体类型名称：');
+    if (newType && newType.trim()) {
+        // 检查是否已存在该类型
+        if (entityTypes.includes(newType)) {
+            alert('该实体类型已存在！');
+            return;
+        }
+        
+        // 添加到实体类型数组
+        entityTypes.push(newType);
+        
+        // 初始化新类型的实体数据
+        entityData[newType] = [];
+        
+        // 更新侧边栏显示
+        updateSidebarEntities();
+        
+        // 如果当前在实体标注模式，重新渲染结果
+        const currentMode = document.querySelector('.nav-button.active').textContent.trim();
+        if (currentMode.includes('实体标注') && annotatedText) {
+            const editableDiv = document.getElementById('editable-result');
+            if (editableDiv) {
+                renderNERResult(entityData);
+            }
+        }
+    }
+}
+
+// 删除实体类型函数
+function deleteEntityType(type) {
+    // 确认是否删除
+    if (!confirm(`确定要删除实体类型"${type}"吗？这将移除所有该类型的标注。`)) {
+        return;
     }
     
-    // 禁用文本选择
-    element.style.userSelect = 'none';
-    element.style.webkitUserSelect = 'none';
-    element.style.mozUserSelect = 'none';
-    element.style.msUserSelect = 'none';
+    // 从类型数组中移除
+    const index = entityTypes.indexOf(type);
+    if (index > -1) {
+        entityTypes.splice(index, 1);
+        
+        // 删除该类型的实体数据
+        delete entityData[type];
+        
+        // 从文本中移除该类型的标注
+        const editableDiv = document.getElementById('editable-result');
+        if (editableDiv) {
+            const spans = editableDiv.querySelectorAll(`span[data-category="${type}"]`);
+            spans.forEach(span => {
+                const textNode = document.createTextNode(span.textContent);
+                span.parentNode.replaceChild(textNode, span);
+            });
+            
+            // 更新annotatedText
+            annotatedText = editableDiv.innerHTML;
+        }
+        
+        // 更新侧边栏显示
+        updateSidebarEntities();
+    }
+}
+
+function setEntityStatus(entityText, category, status, menu) {
+    // 关闭菜单
+    menu.remove();
+    
+    // 更新所有匹配的实体元素的状态
+    const editableDiv = document.getElementById('editable-result');
+    const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
+    
+    spans.forEach(span => {
+        if (span.textContent === entityText) {
+            // 移除之前的状态
+            span.removeAttribute('data-status');
+            
+            // 设置新状态
+            if (status === 'unchecked') {
+                span.setAttribute('data-status', 'unchecked');
+            }
+        }
+    });
+    
+    // 更新 annotatedText
+    annotatedText = editableDiv.innerHTML;
 }
 

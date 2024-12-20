@@ -30,6 +30,9 @@ header {
     z-index: 1000;
     height: 80px;
     box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .logo {
@@ -482,7 +485,7 @@ header {
     justify-content: center;
 }
 
-/* 为+/-按钮设置固定尺寸 */
+/* 为+/-按钮设置���定尺寸 */
 .zoom-controls button:not(:last-child) {
     width: 26px;
     height: 26px;
@@ -964,4 +967,19 @@ span[data-status="unchecked"]::before {
 .location-count {
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+.logout-container {
+    margin-right: 20px;
+}
+
+.logout-icon {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    transition: opacity 0.3s;
+}
+
+.logout-icon:hover {
+    opacity: 0.8;
 }
