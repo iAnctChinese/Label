@@ -683,6 +683,37 @@ def analyze_person_locations():
     except Exception as e:
         return jsonify({"error": f"未预期的错误: {str(e)}"}), 500
 
+@app.route('/add_punctuation', methods=['POST'])
+def add_punctuation():
+    try:
+        data = request.get_json()
+        text = data.get("text")
+        
+        if not text:
+            return jsonify({"error": "Text input is required"}), 400
+            
+        prompt = f"""
+        请为以下文本添加标点符号，使其更易读。要求：
+        1. 保持原文的完整性，不要改变文字内容
+        2. 只添加句号、逗号、顿号、问号和感叹号等基本标点
+        3. 直接返回添加好标点的文本，不要有任何解释说明
+        
+        文本：{text}
+        """
+        
+        response = client.chat.completions.create(
+            model="glm-4",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        result = response.choices[0].message.content.strip()
+        return jsonify({"text": result}), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # 启动服务
 # 启动服务
 if __name__ == '__main__':

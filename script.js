@@ -461,6 +461,7 @@ async function showRelationAnnotation() {
                 `).join('')}
             </div>
         `;
+
     } catch (error) {
         console.error('关系标注错误:', error);
         alert('关系标注失败，请稍后重试');
@@ -547,11 +548,35 @@ function saveRelation(index) {
     relations[index] = { source, relation, target };
     relationData = [...relations];
 
-    // ���闭模态框
+    // 关闭模态框
     closeEditModal();
 
-    // 更新显示
-    showRelationAnnotation();
+    // 重新渲染关系列表
+    const sidebarContent = document.getElementById('sidebar-content');
+    sidebarContent.innerHTML = `
+        <div class="relation-list">
+            <div class="entity-group-title">关系实例</div>
+            ${relations.map(rel => `
+                <div class="relation-item">
+                    <span>${rel.source}</span>
+                    <span style="margin: 0 8px">→</span>
+                    <span>${rel.relation}</span>
+                    <span style="margin: 0 8px">→</span>
+                    <span>${rel.target}</span>
+                    <img src="imges/编辑.png" 
+                         alt="编辑" 
+                         class="edit-btn" 
+                         onclick="editRelation(this)"
+                         title="编辑关系">
+                    <img src="imges/删除.png" 
+                         alt="删除" 
+                         class="delete-btn" 
+                         onclick="deleteRelation(this)"
+                         title="删除关系">
+                </div>
+            `).join('')}
+        </div>
+    `;
 
     // 如果知识图谱正在显示，则更新图谱
     const graphContainer = document.getElementById('knowledge-graph');
@@ -1222,49 +1247,51 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 修改自动识别功能
 async function autoRecognize() {
+    // 获取当前激活的导航按钮文本
     const currentMode = document.querySelector('.nav-button.active').textContent.trim();
-    
-    // 在结构标注模式下，不执行任何操作
-    if (currentMode.includes('结构标注')) {
-        return;
-    }
-    
-    const textArea = document.getElementById('text-area');
-    const editableDiv = document.getElementById('editable-result');
-    let text = '';
-    
-    // 根据当前显示的元素获取文本内容
-    if (textArea && textArea.style.display !== 'none') {
-        text = textArea.value.trim();
-    } else if (editableDiv) {
-        text = editableDiv.innerText.trim();
-    }
-    
-    if (!text) {
-        alert('请输入文本进行识别');
-        return;
-    }
     
     // 显示加载动画
     document.getElementById('loading-spinner').style.display = 'block';
     toggleButtons(true);
     
     try {
-        // 保存原始文本，用于后续处理
-        originalText = text;
-        
-        if (currentMode.includes('实体标注')) {
+        if (currentMode.includes('结构标注')) {
+            // 结构标注页面 - 添加标点符号
+            const text = document.getElementById('text-area').value;
+            if (!text.trim()) {
+                alert('请先输入文本内容');
+                return;
+            }
+            
+            const response = await fetch('http://localhost:5000/add_punctuation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text })
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById('text-area').value = data.text;
+                updateWordCount(); // 更新字数统计
+            } else {
+                throw new Error(data.error || '添加标点符号失败');
+            }
+        } else if (currentMode.includes('实体标注')) {
+            // 保持原有的实体标注功能
             await performNER();
-            await saveAnnotationResults(); // 保存实体标注结果
         } else if (currentMode.includes('关系标注')) {
+            // 执行关系抽取
+            await extractRelations();
+            // 立即更新关系标注界面显示
             await showRelationAnnotation();
-            await saveAnnotationResults(); // 保存关系标注结果
         }
     } catch (error) {
-        console.error('识别错误:', error);
-        alert('识别失败，请稍后重试');
+        console.error('自动识别错误:', error);
+        alert(error.message || '自动识别失败，请稍后重试');
     } finally {
-        // 隐藏加载动画并恢复按钮
+        // 隐藏加载动画
         document.getElementById('loading-spinner').style.display = 'none';
         toggleButtons(false);
     }
@@ -1272,7 +1299,7 @@ async function autoRecognize() {
 
 // 修改返回结构标注页面的函数，保留标注后的文本
 function returnToStructureAnnotation() {
-    // 隐藏知识图谱和��图
+    // 隐藏知识图谱和地图
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer) {
         graphContainer.style.display = 'none';
@@ -1369,7 +1396,7 @@ function showRelationAnnotationUI() {
         </div>
     `;
     
-    // ��保文本框不可编辑且禁用文本选择
+    // 确保文本框不可编辑且禁用文本选择
     const editableDiv = document.getElementById('editable-result');
     if (editableDiv) {
         editableDiv.contentEditable = 'false';
@@ -1717,7 +1744,7 @@ function showPersonRoute(person) {
                     baiduMap.setViewport(points);
                 }
             } else {
-                console.error(`无法解析地址: ${searchAddress}`); // 调试��志
+                console.error(`无法解析地址: ${searchAddress}`); // 调试日志
             }
         });
     });
@@ -1746,7 +1773,7 @@ function logout() {
     window.location.href = './login/login.html';
 }
 
-// 添加阻止编辑的函��
+// 添加阻止编辑的函数
 function preventEdit(event) {
     event.preventDefault();
     alert('不能在结构标注页面进行编辑');
