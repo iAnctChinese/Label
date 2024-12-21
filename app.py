@@ -469,6 +469,10 @@ def ner():
             ]
         )
 
+        # 记录返回的信息到本地文本文件
+        with open('response_log.txt', 'a', encoding='utf-8') as log_file:
+            log_file.write(response.choices[0].message.content + '\n')
+
         raw_result = response.choices[0].message.content
         
         # 清理JSON字符串

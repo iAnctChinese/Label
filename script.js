@@ -78,7 +78,7 @@ async function performNER() {
     }
 
     if (!originalText) {
-        alert('���输入文本进行实体识别');
+        alert('请输入文本进行实体识别');
         return;
     }
 
@@ -87,20 +87,19 @@ async function performNER() {
         // 检查缓存的文本是否与当前文本一致
         const cleanCurrentText = originalText.replace(/[\s\n]/g, '');
         const cleanCachedText = entityCache.text.replace(/[\s\n]/g, '');
-        
-        if (cleanCurrentText === cleanCachedText) {
-            // 确保缓存的实体类型与当前的实体类型匹配
-            entityTypes.forEach(type => {
-                if (!entityCache.entities[type]) {
-                    entityCache.entities[type] = [];
-                }
-            });
-            
+        const cachedEntityTypes = Object.keys(entityCache.entities);
+        const currentEntityTypes = entityTypes; // 使用当前的 entityTypes
+        const entityTypesMatch = 
+            cachedEntityTypes.length === currentEntityTypes.length && 
+            cachedEntityTypes.every(type => currentEntityTypes.includes(type));
+
+        if(cleanCurrentText === cleanCachedText && entityTypesMatch){
             renderNERResult(entityCache.entities);
             updateSidebarEntities();
             return;
         }
     }
+    
 
     document.getElementById('loading-spinner').style.display = 'block';
     toggleButtons(true);
@@ -952,7 +951,7 @@ function enableTextSelection(element) {
     element.addEventListener('input', preventEdit);
 }
 
-// 修改处理文本选择的���数
+// 修改处理文本选择的函数
 function handleTextSelection() {
     // 检查当前是否在关系标注页面
     const currentMode = document.querySelector('.nav-button.active').textContent.trim();
