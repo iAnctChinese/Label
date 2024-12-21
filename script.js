@@ -376,8 +376,12 @@ async function extractRelations() {
     // 检查缓存是否有效
     if (relationCache.text === currentText && 
         JSON.stringify(relationCache.entities) === JSON.stringify(currentEntities)) {
-        relations = relationCache.relations;
-        relationData = [...relations]; // 更新relationData
+        // 使用缓存时，确保关系中的实体都存在于当前实体列表中
+        relations = relationCache.relations.filter(rel => {
+            const allEntities = Object.values(entityData).flat();
+            return allEntities.includes(rel.source) && allEntities.includes(rel.target);
+        });
+        relationData = [...relations];
         return;
     }
 
@@ -393,8 +397,12 @@ async function extractRelations() {
         }
 
         const data = await response.json();
-        relations = data.relations;
-        relationData = [...relations]; // 更新relationData
+        // 过滤掉包含已删除实体的关系
+        relations = data.relations.filter(rel => {
+            const allEntities = Object.values(entityData).flat();
+            return allEntities.includes(rel.source) && allEntities.includes(rel.target);
+        });
+        relationData = [...relations];
         
         // 更新缓存
         relationCache = {
@@ -439,10 +447,16 @@ async function showRelationAnnotation() {
                         <span>${rel.relation}</span>
                         <span style="margin: 0 8px">→</span>
                         <span>${rel.target}</span>
+                        <img src="imges/编辑.png" 
+                             alt="编辑" 
+                             class="edit-btn" 
+                             onclick="editRelation(this)"
+                             title="编辑关系">
                         <img src="imges/删除.png" 
                              alt="删除" 
                              class="delete-btn" 
-                             onclick="deleteRelation(this)">
+                             onclick="deleteRelation(this)"
+                             title="删除关系">
                     </div>
                 `).join('')}
             </div>
@@ -471,6 +485,75 @@ function deleteRelation(button) {
     relationData = [...relations]; // 更新relationData
     showRelationAnnotation();
 
+    const graphContainer = document.getElementById('knowledge-graph');
+    if (graphContainer.style.display === 'block') {
+        showKnowledgeGraph();
+    }
+}
+
+// 添加编辑关系函数
+function editRelation(button) {
+    const relationItem = button.closest('.relation-item');
+    const index = Array.from(relationItem.parentElement.children).indexOf(relationItem) - 1;
+    const relation = relations[index];
+
+    // 创建模态框
+    const modalHtml = `
+        <div class="modal-overlay">
+            <div class="relation-edit-modal">
+                <div class="relation-edit-form">
+                    <div class="form-group">
+                        <label>源实体</label>
+                        <input type="text" id="edit-source" value="${relation.source}">
+                    </div>
+                    <div class="form-group">
+                        <label>关系类型</label>
+                        <input type="text" id="edit-relation" value="${relation.relation}">
+                    </div>
+                    <div class="form-group">
+                        <label>目标实体</label>
+                        <input type="text" id="edit-target" value="${relation.target}">
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-button cancel" onclick="closeEditModal()">取消</button>
+                        <button class="modal-button save" onclick="saveRelation(${index})">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeEditModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function saveRelation(index) {
+    const source = document.getElementById('edit-source').value;
+    const relation = document.getElementById('edit-relation').value;
+    const target = document.getElementById('edit-target').value;
+
+    if (!source || !relation || !target) {
+        alert('所有字段都必须填写');
+        return;
+    }
+
+    // 更新关系数据
+    relations[index] = { source, relation, target };
+    relationData = [...relations];
+
+    // ���闭模态框
+    closeEditModal();
+
+    // 更新显示
+    showRelationAnnotation();
+
+    // 如果知识图谱正在显示，则更新图谱
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer.style.display === 'block') {
         showKnowledgeGraph();
@@ -527,10 +610,16 @@ async function showKnowledgeGraph() {
                         <span>${rel.relation}</span>
                         <span style="margin: 0 8px">→</span>
                         <span>${rel.target}</span>
+                        <img src="imges/编辑.png" 
+                             alt="编辑" 
+                             class="edit-btn" 
+                             onclick="editRelation(this)"
+                             title="编辑关系">
                         <img src="imges/删除.png" 
                              alt="删除" 
                              class="delete-btn" 
-                             onclick="deleteRelation(this)">
+                             onclick="deleteRelation(this)"
+                             title="删除关系">
                     </div>
                 `).join('')}
             </div>
@@ -828,12 +917,17 @@ function updateSidebarEntities() {
                     
                     return `
                         <div class="entity-item">
-                            <span class="${getHighlightClass(category)}">${entity}</span>
-                            <span class="entity-count">${countText}</span>
-                            <img src="imges/删除.png" 
-                                 alt="删除" 
-                                 class="delete-btn" 
-                                 onclick="deleteEntityFromList(this, '${entity}', '${category}')">
+                            <div class="entity-name-container">
+                                <span class="${getHighlightClass(category)} entity-name">${entity}</span>
+                                <span class="entity-count">${countText}</span>
+                            </div>
+                            <div class="delete-btn-container">
+                                <img src="imges/删除.png" 
+                                     alt="删除" 
+                                     class="delete-btn" 
+                                     onclick="deleteEntityFromList(this, '${entity}', '${category}')"
+                                     title="删除实体">
+                            </div>
                         </div>
                     `;
                 }).join('')}
@@ -956,7 +1050,7 @@ function handleTextSelection() {
     // 检查当前是否在关系标注页面
     const currentMode = document.querySelector('.nav-button.active').textContent.trim();
     if (currentMode.includes('关系标注')) {
-        return; // 在关系标注页面直接��回，不处理文本选择
+        return; // 在关系标注页面直接回，处理文本选择
     }
     
     const selection = window.getSelection();
@@ -1019,7 +1113,7 @@ function handleNavButtonClick(button) {
     document.querySelectorAll('.nav-button').forEach(btn => {
         btn.classList.remove('active');
     });
-    // 为��前点击的按钮添加active类
+    // 为当前点击的按钮添加active类
     button.classList.add('active');
 }
 
@@ -1161,8 +1255,10 @@ async function autoRecognize() {
         
         if (currentMode.includes('实体标注')) {
             await performNER();
+            await saveAnnotationResults(); // 保存实体标注结果
         } else if (currentMode.includes('关系标注')) {
             await showRelationAnnotation();
+            await saveAnnotationResults(); // 保存关系标注结果
         }
     } catch (error) {
         console.error('识别错误:', error);
@@ -1176,7 +1272,7 @@ async function autoRecognize() {
 
 // 修改返回结构标注页面的函数，保留标注后的文本
 function returnToStructureAnnotation() {
-    // 隐藏知识图谱和地图
+    // 隐藏知识图谱和��图
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer) {
         graphContainer.style.display = 'none';
@@ -1258,16 +1354,22 @@ function showRelationAnnotationUI() {
                     <span>${rel.relation}</span>
                     <span style="margin: 0 8px">→</span>
                     <span>${rel.target}</span>
+                    <img src="imges/编辑.png" 
+                         alt="编辑" 
+                         class="edit-btn" 
+                         onclick="editRelation(this)"
+                         title="编辑关系">
                     <img src="imges/删除.png" 
                          alt="删除" 
                          class="delete-btn" 
-                         onclick="deleteRelation(this)">
+                         onclick="deleteRelation(this)"
+                         title="删除关系">
                 </div>
             `).join('')}
         </div>
     `;
     
-    // 确保文本框不可编辑且禁用文本选择
+    // ��保文本框不可编辑且禁用文本选择
     const editableDiv = document.getElementById('editable-result');
     if (editableDiv) {
         editableDiv.contentEditable = 'false';
@@ -1374,37 +1476,47 @@ function annotateSelection(range, category) {
     annotatedText = editableDiv.innerHTML;
 }
 
-function deleteEntityFromList(button, entityText, category) {
-    // 从侧边栏中删除实体
-    const entityItem = button.closest('.entity-item');
-    entityItem.remove();
-
-    // 从entityData中删除实体
-    const index = entityData[category].indexOf(entityText);
-    if (index > -1) {
-        entityData[category].splice(index, 1);
+function deleteEntityFromList(button, entity, category) {
+    // 从实体数据中删除
+    if (entityData[category]) {
+        const index = entityData[category].indexOf(entity);
+        if (index > -1) {
+            entityData[category].splice(index, 1);
+        }
     }
 
-    // 从文本中删除对应的标注
+    // 从文本中删除标注
     const editableDiv = document.getElementById('editable-result');
     const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
     spans.forEach(span => {
-        if (span.textContent === entityText) {
+        if (span.textContent === entity) {
             const textNode = document.createTextNode(span.textContent);
             span.parentNode.replaceChild(textNode, span);
         }
     });
 
+    // 删除所有包含该实体的关系
+    relations = relations.filter(rel => 
+        rel.source !== entity && rel.target !== entity
+    );
+    relationData = [...relations]; // 更新relationData
+
     // 更新annotatedText
     annotatedText = editableDiv.innerHTML;
 
-    // 更新侧边栏
+    // 更新侧边栏的实体统计
     updateSidebarEntities();
 
     // 如果知识图谱正在显示，则更新图谱
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer.style.display === 'block') {
         showKnowledgeGraph();
+    }
+
+    // 如果当前在关系标注页面，更新关系列表
+    const currentMode = document.querySelector('.nav-button.active').textContent.trim();
+    if (currentMode.includes('关系标注')) {
+        showRelationAnnotation();
     }
 }
 
@@ -1590,7 +1702,7 @@ function showPersonRoute(person) {
                     this.openInfoWindow(infoWindow);
                 });
 
-                // 如果所有点都已添加，则绘制路线
+                // 如果所有点都已加，则绘制路线
                 if (points.length === route.locations.length) {
                     // 绘制路线
                     polyline = new BMap.Polyline(points, {
@@ -1605,7 +1717,7 @@ function showPersonRoute(person) {
                     baiduMap.setViewport(points);
                 }
             } else {
-                console.error(`无法解析地址: ${searchAddress}`); // 调试日志
+                console.error(`无法解析地址: ${searchAddress}`); // 调试��志
             }
         });
     });
@@ -1634,10 +1746,10 @@ function logout() {
     window.location.href = './login/login.html';
 }
 
-// 添加阻止编辑的函数
+// 添加阻止编辑的函��
 function preventEdit(event) {
     event.preventDefault();
-    alert('只能在结构标注页面进行编辑');
+    alert('不能在结构标注页面进行编辑');
     // 恢复原始内容
     if (this.tagName.toLowerCase() === 'textarea') {
         this.value = this.defaultValue;
@@ -1732,4 +1844,82 @@ function setEntityStatus(entityText, category, status, menu) {
     // 更新 annotatedText
     annotatedText = editableDiv.innerHTML;
 }
+
+// 保存标注结果到服务器
+async function saveAnnotationResults() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const documentId = urlParams.get('documentId');
+        if (!documentId) return;
+
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                original_text: originalText,
+                annotated_text: annotatedText,
+                entity_data: entityData,
+                relation_data: relationData
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('保存标注结果失败');
+        }
+    } catch (error) {
+        console.error('保存标注结果错误:', error);
+        alert('保存标注结果失败，请稍后重试');
+    }
+}
+
+// 在页面加载时获取已有的标注结果
+async function loadAnnotationResults() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const documentId = urlParams.get('documentId');
+        if (!documentId) return;
+
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('获取标注结果失败');
+        }
+
+        const data = await response.json();
+        if (data.original_text) {
+            originalText = data.original_text;
+            annotatedText = data.annotated_text;
+            entityData = data.entity_data;
+            relationData = data.relation_data;
+
+            // 显示已有的标注结果
+            const textArea = document.getElementById('text-area');
+            textArea.value = originalText;
+            
+            if (annotatedText) {
+                renderNERResult(entityData);
+            }
+        }
+    } catch (error) {
+        console.error('加载标注结果错误:', error);
+    }
+}
+
+// 在页面加载完成后调用
+document.addEventListener('DOMContentLoaded', () => {
+    // ... 现有代码 ...
+    loadAnnotationResults();
+});
 

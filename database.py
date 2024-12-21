@@ -43,6 +43,21 @@ def init_db():
     )
     ''')
     
+    # 创建文档内容和标注结果表
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS document_annotations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_id INTEGER NOT NULL,
+        original_text TEXT,
+        annotated_text TEXT,
+        entity_data TEXT,
+        relation_data TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (document_id) REFERENCES documents (id)
+    )
+    ''')
+    
     conn.commit()
     conn.close()
 

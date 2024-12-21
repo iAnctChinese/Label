@@ -309,45 +309,62 @@ def handle_document(document_id):
         db = get_db()
         cursor = db.cursor()
         
-        # 检查文档是否属于当前用户
-        document = cursor.execute(
-            '''SELECT d.*, p.user_id 
-               FROM documents d 
-               JOIN projects p ON d.project_id = p.id 
-               WHERE d.id = ? AND p.user_id = ?''',
-            (document_id, user_id)
-        ).fetchone()
-        
-        if not document:
-            return jsonify({"error": "文档不存在或无权访问"}), 404
-            
         if request.method == 'GET':
+            # 获取文档信息和标注数据
+            document = cursor.execute('''
+                SELECT d.*, da.original_text, da.annotated_text, 
+                       da.entity_data, da.relation_data
+                FROM documents d
+                LEFT JOIN document_annotations da ON d.id = da.document_id
+                WHERE d.id = ?
+            ''', (document_id,)).fetchone()
+            
+            if not document:
+                return jsonify({"error": "文档不存在"}), 404
+                
             return jsonify({
                 "id": document['id'],
                 "name": document['name'],
                 "description": document['description'],
                 "content": document['content'],
+                "original_text": document['original_text'],
+                "annotated_text": document['annotated_text'],
+                "entity_data": json.loads(document['entity_data']) if document['entity_data'] else {},
+                "relation_data": json.loads(document['relation_data']) if document['relation_data'] else [],
                 "created_at": document['created_at'],
                 "updated_at": document['updated_at']
             }), 200
             
         elif request.method == 'PUT':
-            # 更新文档信息
             data = request.get_json()
-            name = data.get('name')
-            description = data.get('description')
-            content = data.get('content')
             
-            if name:
-                cursor.execute(
-                    '''UPDATE documents 
-                       SET name = ?, description = ?, content = ?, updated_at = CURRENT_TIMESTAMP 
-                       WHERE id = ?''',
-                    (name, description, content, document_id)
-                )
-                db.commit()
-                return jsonify({"message": "文档更新成功"}), 200
-                
+            # 更新文档基本信息
+            cursor.execute('''
+                UPDATE documents 
+                SET name = ?, description = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', (data.get('name'), data.get('description'), 
+                  data.get('content'), document_id))
+            
+            # 更新或插入标注数据
+            annotation_data = {
+                'original_text': data.get('original_text'),
+                'annotated_text': data.get('annotated_text'),
+                'entity_data': json.dumps(data.get('entity_data', {})),
+                'relation_data': json.dumps(data.get('relation_data', []))
+            }
+            
+            cursor.execute('''
+                INSERT OR REPLACE INTO document_annotations 
+                (document_id, original_text, annotated_text, entity_data, relation_data, updated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ''', (document_id, annotation_data['original_text'], 
+                  annotation_data['annotated_text'], annotation_data['entity_data'],
+                  annotation_data['relation_data']))
+            
+            db.commit()
+            return jsonify({"message": "文档更新成功"}), 200
+
         elif request.method == 'DELETE':
             # 删除文档
             cursor.execute('DELETE FROM documents WHERE id = ?', (document_id,))

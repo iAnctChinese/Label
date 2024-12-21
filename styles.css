@@ -324,15 +324,15 @@ header {
     cursor: pointer;
     opacity: 0.7;
     transition: all 0.2s ease;
-    margin-left: auto;  /* 保持靠右对齐 */
-    padding: 2px;      /* 添加内边距使点击区域更大 */
-    border-radius: 4px; /* 添加圆角 */
+    margin-left: 8px;
+    padding: 2px;
+    border-radius: 4px;
 }
 
 .delete-btn:hover {
     opacity: 1;
     transform: scale(1.1);
-    background-color: rgba(255, 71, 87, 0.1); /* 添加淡红色背景 */
+    background-color: rgba(255, 71, 87, 0.1);
 }
 
 .container {
@@ -485,13 +485,13 @@ header {
     justify-content: center;
 }
 
-/* 为+/-按钮设置���定尺寸 */
+/* 为+/-按钮设置定尺寸 */
 .zoom-controls button:not(:last-child) {
     width: 26px;
     height: 26px;
 }
 
-/* 为重置按钮设置特殊样式 */
+/* 为重置按钮设置���殊样式 */
 .zoom-controls button:last-child {
     width: auto;     /* 自动宽度适应文本 */
     height: 26px;    /* 保持相同高度 */
@@ -610,7 +610,7 @@ header {
 .entity-item {
     display: flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: 8px 12px;
     background: white;
     border-radius: 6px;
     margin-bottom: 6px;
@@ -619,7 +619,48 @@ header {
     font-size: 12px;
     line-height: 1.4;
     letter-spacing: 0.2px;
-    gap: 4px;
+    gap: 8px;
+}
+
+/* 实体名称容器 */
+.entity-name-container {
+    flex: 1;  /* 占据剩余空间 */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;  /* 允许内容压缩 */
+}
+
+/* 实体名称文本 */
+.entity-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 实体计数样式 */
+.entity-count {
+    color: var(--text-secondary);
+    font-size: 12px;
+    white-space: nowrap;  /* 防止换行 */
+}
+
+/* 删除按钮容器 */
+.delete-btn-container {
+    display: flex;
+    align-items: center;
+    margin-left: auto;  /* 推到最右侧 */
+}
+
+/* 删除按钮样式 */
+.delete-btn {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    padding: 2px;
+    border-radius: 4px;
 }
 
 /* 修改实体类管理样式 */
@@ -805,7 +846,7 @@ span[data-status="unchecked"]::before {
     backdrop-filter: blur(4px);
 }
 
-/* 添加小三角形指示器 */
+/* 加小三角形指示器 */
 [title]:hover::before {
     content: '';
     position: absolute;
@@ -982,4 +1023,115 @@ span[data-status="unchecked"]::before {
 
 .logout-icon:hover {
     opacity: 0.8;
+}
+
+/* 添加编辑按钮样式 */
+.edit-btn {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    margin-left: auto;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+.edit-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: rgba(65, 70, 110, 0.1);
+}
+
+/* 删除按钮样式调整 */
+.delete-btn {
+    margin-left: 8px;  /* 改为固定间距 */
+}
+
+/* 添加编辑弹窗样式 */
+.relation-edit-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    width: 400px;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.relation-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.form-group input, .form-group select {
+    padding: 8px 12px;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus, .form-group select:focus {
+    border-color: #41466E;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(65, 70, 110, 0.1);
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.modal-button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-button.cancel {
+    background: white;
+    border: 1px solid #e1e1e1;
+    color: var(--text-primary);
+}
+
+.modal-button.save {
+    background: #41466E;
+    border: 1px solid #41466E;
+    color: white;
+}
+
+.modal-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
