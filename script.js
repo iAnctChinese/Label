@@ -1350,7 +1350,7 @@ function returnToStructureAnnotation() {
         <div class="word-count" id="word-count"></div>
     `;
     
-    // 如果不是结构标注模式，添加事件监听器
+    // 如果不是结构标注模式，添��事件��听器
     if (!isStructureMode) {
         const editableDiv = document.getElementById('editable-result');
         if (editableDiv) {
@@ -1949,4 +1949,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ... 现有代码 ...
     loadAnnotationResults();
 });
+
+// 添加返回文件管理页面的函数
+function returnToFileManagement() {
+    // 获取当前URL中的projectId
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('projectId');
+    
+    // 跳转到project.html页面，并保持projectId参数
+    window.location.href = `project.html?projectId=${projectId}`;
+}
 

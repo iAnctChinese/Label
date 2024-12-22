@@ -206,3 +206,56 @@ header {
     border: 1px solid #ddd;
     border-radius: 5px;
 }
+
+/* 添加登出容器和图标样式 */
+.logout-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;  /* 增加图标之间的间距 */
+    margin-right: 10px;
+}
+
+/* 统一图标样式 */
+.file-icon,
+.logout-icon {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    padding: 8px;  /* 添加内边距 */
+    border-radius: 50%;  /* 圆形边框 */
+    background-color: #e8e8e8;  /* 浅灰色背景 */
+    border: 1px solid #e1e1e1;  /* 添加边框 */
+}
+
+/* 统一悬停效果 */
+.file-icon:hover,
+.logout-icon:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: #ddd8d8;  /* 悬停时背景色稍微加深 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);  /* 添加阴影效果 */
+}
+
+
+.logo {
+    margin-left: 10px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-image {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.logo span {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #41466E;
+}

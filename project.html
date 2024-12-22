@@ -5,17 +5,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能标注平台</title>
+    <link rel="icon" href="./imges/logo.png" type="image/png">
     <link rel="stylesheet" href="styles2.css">
   
 </head>
 
 <body>
     <header>
-        <div class="logo"> 智能标注平台</div>
+        <div class="logo">
+            <img src="./imges/logo.png" alt="logo" class="logo-image">
+            <span>智能标注平台</span>
+        </div>
         <a href="index.html" class="management-link">
             <span>项目管理</span>
         </a>
         <div class="document-management"><span><b>文档管理</b></span></div>
+        <div class="logout-container">
+            <img src="./imges/登出账号.png" 
+                 alt="登出账号" 
+                 title="登出账号" 
+                 class="logout-icon" 
+                 onclick="logout()">
+        </div>
     </header>
 
     <div class="container">
@@ -372,6 +383,12 @@ async function updateDocument() {
 
 // 绑定更新文档按钮事件
 document.getElementById('updateProjectButton').onclick = updateDocument;
+
+// 添加登出函数
+function logout() {
+    localStorage.removeItem('token');
+    window.location.href = 'login/login.html';
+}
 
     </script>
 </body>

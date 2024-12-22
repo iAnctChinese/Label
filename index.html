@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="./imges/logo.png" type="image/png">
     <title>智能标注平台</title>
     <link rel="stylesheet" href="styles2.css">
   
@@ -11,8 +12,18 @@
 
 <body>
     <header>
-        <div class="logo"> 智能标注平台</div>
+        <div class="logo">
+            <img src="./imges/logo.png" alt="logo" class="logo-image">
+            <span>智能标注平台</span>
+        </div>
         <div class="document-management"><span><b>文档管理</b></span></div>
+        <div class="logout-container">
+            <img src="./imges/登出账号.png" 
+                 alt="登出账号" 
+                 title="登出账号" 
+                 class="logout-icon" 
+                 onclick="logout()">
+        </div>
     </header>
 
     <div class="container">
@@ -383,6 +394,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 });
+
+// 添加登出函数
+function logout() {
+    localStorage.removeItem('token');
+    window.location.href = 'login/login.html';
+}
 
     </script>
 </body>

@@ -36,7 +36,7 @@ header {
 }
 
 .logo {
-    margin-left: 20px;
+    margin-left: 10px;
     flex: 1;
     display: flex;
     align-items: center;
@@ -491,7 +491,7 @@ header {
     height: 26px;
 }
 
-/* 为重置按钮设置���殊样式 */
+/* 为重置按钮设置特殊样式 */
 .zoom-controls button:last-child {
     width: auto;     /* 自动宽度适应文本 */
     height: 26px;    /* 保持相同高度 */
@@ -830,41 +830,46 @@ span[data-status="unchecked"]::before {
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    padding: 4px 8px;
-    background-color: rgba(0, 0, 0, 0.8);
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #41466E, #2c3154);  /* 渐变背景 */
     color: white;
-    font-size: 12px;
-    border-radius: 4px;
+    font-size: 13px;
+    border-radius: 8px;
     white-space: nowrap;
     z-index: 1000;
     pointer-events: none;
-    margin-bottom: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    margin-bottom: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
     animation: tooltipFade 0.2s ease-in-out;
     letter-spacing: 0.5px;
-    font-weight: 500;
-    backdrop-filter: blur(4px);
+    font-weight: 400;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);  /* 添加微妙的边框 */
 }
 
-/* 加小三角形指示器 */
+/* 修改小三角形指示器 */
 [title]:hover::before {
     content: '';
     position: absolute;
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    border: 4px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.8);
-    margin-bottom: -3px;
-    pointer-events: none;
-    animation: tooltipFade 0.2s ease-in-out;
+    width: 8px;
+    height: 8px;
+    background: #41466E;  /* 使用主题色 */
+    margin-bottom: 4px;
+    transform-origin: center;
+    transform: translateX(-50%) rotate(45deg);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 添加工具提示的淡入动画 */
+/* 工具提示淡入动画 */
 @keyframes tooltipFade {
     from {
         opacity: 0;
-        transform: translateX(-50%) translateY(5px);
+        transform: translateX(-50%) translateY(-5px);
     }
     to {
         opacity: 1;
@@ -1011,7 +1016,33 @@ span[data-status="unchecked"]::before {
 }
 
 .logout-container {
-    margin-right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;  /* 增加图标之间的间距 */
+    margin-right: 10px;
+}
+
+/* 统一图标样式 */
+.file-icon,
+.logout-icon {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    padding: 8px;  /* 添加内边距 */
+    border-radius: 50%;  /* 圆形边框 */
+    background-color: #e8e8e8;  /* 浅灰色背景 */
+    border: 1px solid #e1e1e1;  /* 添加边框 */
+}
+
+/* 统一悬停效果 */
+.file-icon:hover,
+.logout-icon:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: #ddd8d8;  /* 悬停时背景色稍微加深 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);  /* 添加阴影效果 */
 }
 
 .logout-icon {
