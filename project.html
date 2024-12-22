@@ -326,7 +326,10 @@ async function copyDocument(documentId) {
             body: JSON.stringify({
                 name: `${doc.name} - 副本`,
                 description: doc.description,
-                content: doc.content
+                original_text: doc.original_text,
+                annotated_text: doc.annotated_text,
+                entity_data: doc.entity_data,
+                relation_data: doc.relation_data
             })
         });
 

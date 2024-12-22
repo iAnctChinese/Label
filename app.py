@@ -275,19 +275,34 @@ def handle_documents(project_id):
             data = request.get_json()
             name = data.get('name')
             description = data.get('description', '')
-            content = data.get('content', '')
             
             if not name:
                 return jsonify({"error": "文档名称是必填的"}), 400
                 
-            cursor.execute(
-                '''INSERT INTO documents (name, description, content, project_id) 
-                   VALUES (?, ?, ?, ?)''',
-                (name, description, content, project_id)
-            )
-            db.commit()
-            
-            return jsonify({"message": "文档创建成功"}), 201
+            try:
+                cursor.execute(
+                    '''INSERT INTO documents 
+                       (name, description, project_id, original_text, annotated_text, entity_data, relation_data) 
+                       VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                    (name, description, project_id, '', '', '{}', '[]')
+                )
+                db.commit()  # 提交事务
+                
+                # 获取新创建的文档ID
+                document_id = cursor.lastrowid
+                
+                return jsonify({
+                    "message": "文档创建成功",
+                    "document": {
+                        "id": document_id,
+                        "name": name,
+                        "description": description,
+                    }
+                }), 201
+                
+            except sqlite3.Error as e:
+                db.rollback()  # 发生错误时回滚事务
+                return jsonify({"error": f"数据库错误: {str(e)}"}), 500
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -309,14 +324,20 @@ def handle_document(document_id):
         db = get_db()
         cursor = db.cursor()
         
+        # 添加用户权限验证
+        document = cursor.execute('''
+            SELECT d.* FROM documents d
+            JOIN projects p ON d.project_id = p.id
+            WHERE d.id = ? AND p.user_id = ?
+        ''', (document_id, user_id)).fetchone()
+        
+        if not document:
+            return jsonify({"error": "文档不存在或无权访问"}), 404
+            
         if request.method == 'GET':
             # 获取文档信息和标注数据
             document = cursor.execute('''
-                SELECT d.*, da.original_text, da.annotated_text, 
-                       da.entity_data, da.relation_data
-                FROM documents d
-                LEFT JOIN document_annotations da ON d.id = da.document_id
-                WHERE d.id = ?
+                SELECT * FROM documents WHERE id = ?
             ''', (document_id,)).fetchone()
             
             if not document:
@@ -326,7 +347,6 @@ def handle_document(document_id):
                 "id": document['id'],
                 "name": document['name'],
                 "description": document['description'],
-                "content": document['content'],
                 "original_text": document['original_text'],
                 "annotated_text": document['annotated_text'],
                 "entity_data": json.loads(document['entity_data']) if document['entity_data'] else {},
@@ -338,33 +358,49 @@ def handle_document(document_id):
         elif request.method == 'PUT':
             data = request.get_json()
             
-            # 更新文档基本信息
-            cursor.execute('''
-                UPDATE documents 
-                SET name = ?, description = ?, content = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ''', (data.get('name'), data.get('description'), 
-                  data.get('content'), document_id))
+            # 验证文档所有权
+            document = cursor.execute('''
+                SELECT d.* FROM documents d
+                JOIN projects p ON d.project_id = p.id
+                WHERE d.id = ? AND p.user_id = ?
+            ''', (document_id, user_id)).fetchone()
             
-            # 更新或插入标注数据
-            annotation_data = {
-                'original_text': data.get('original_text'),
-                'annotated_text': data.get('annotated_text'),
-                'entity_data': json.dumps(data.get('entity_data', {})),
-                'relation_data': json.dumps(data.get('relation_data', []))
-            }
-            
-            cursor.execute('''
-                INSERT OR REPLACE INTO document_annotations 
-                (document_id, original_text, annotated_text, entity_data, relation_data, updated_at)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ''', (document_id, annotation_data['original_text'], 
-                  annotation_data['annotated_text'], annotation_data['entity_data'],
-                  annotation_data['relation_data']))
-            
-            db.commit()
-            return jsonify({"message": "文档更新成功"}), 200
-
+            if not document:
+                return jsonify({"error": "文档不存在或无权访问"}), 404
+                
+            # 数据验证
+            if not data.get('name'):
+                return jsonify({"error": "文档名称不能为空"}), 400
+                
+            try:
+                # 开始事务
+                cursor.execute('BEGIN')
+                
+                cursor.execute('''
+                    UPDATE documents 
+                    SET name = ?, 
+                        description = ?, 
+                        original_text = ?,
+                        annotated_text = ?,
+                        entity_data = ?,
+                        relation_data = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                ''', (data.get('name'), 
+                      data.get('description'), 
+                      data.get('original_text'),
+                      data.get('annotated_text'),
+                      json.dumps(data.get('entity_data', {})),
+                      json.dumps(data.get('relation_data', [])),
+                      document_id))
+                      
+                db.commit()
+                return jsonify({"message": "文档更新成功"}), 200
+                
+            except Exception as e:
+                db.rollback()
+                raise e
+                
         elif request.method == 'DELETE':
             # 删除文档
             cursor.execute('DELETE FROM documents WHERE id = ?', (document_id,))

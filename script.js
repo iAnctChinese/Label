@@ -65,35 +65,33 @@ function pasteText() {
 
 // 实体标注相关函数
 async function performNER() {
-    // 如果没有原始文本，从当前显示的元素获取
-    if (!originalText) {
-        const textArea = document.getElementById('text-area');
-        const editableDiv = document.getElementById('editable-result');
+    const textArea = document.getElementById('text-area');
+    const editableDiv = document.getElementById('editable-result');
+    let newText = '';
         
-        if (textArea && textArea.style.display !== 'none') {
-            originalText = textArea.value.trim();
-        } else if (editableDiv) {
-            originalText = editableDiv.innerText.trim();
-        }
+    if (textArea && textArea.style.display !== 'none') {
+        newText = textArea.value.trim();
+    } else if (editableDiv) {
+        newText = editableDiv.innerText.trim();
     }
-
-    if (!originalText) {
+    
+    if (!newText) {
         alert('请输入文本进行实体识别');
         return;
     }
 
-    // 如果有缓存，直接使用缓存
-    if (entityCache) {
+    if (newText !== originalText) {
+        originalText = newText;
+    }
+    else if (entityCache) {
         // 检查缓存的文本是否与当前文本一致
-        const cleanCurrentText = originalText.replace(/[\s\n]/g, '');
-        const cleanCachedText = entityCache.text.replace(/[\s\n]/g, '');
         const cachedEntityTypes = Object.keys(entityCache.entities);
         const currentEntityTypes = entityTypes; // 使用当前的 entityTypes
         const entityTypesMatch = 
             cachedEntityTypes.length === currentEntityTypes.length && 
             cachedEntityTypes.every(type => currentEntityTypes.includes(type));
 
-        if(cleanCurrentText === cleanCachedText && entityTypesMatch){
+        if(entityTypesMatch){
             renderNERResult(entityCache.entities);
             updateSidebarEntities();
             return;
@@ -1014,7 +1012,7 @@ function returnToEntityAnnotation() {
         
         // 如果已经进行过实体标注（通过检查是否存在实体数据）
         if (Object.values(entityData).some(arr => arr.length > 0)) {
-            // 启用文本选择功能
+            // 启用文本���择功能
             enableTextSelection(editableDiv);
             
             // 为已标注的实体添加右键菜单事件
@@ -1350,7 +1348,7 @@ function returnToStructureAnnotation() {
         <div class="word-count" id="word-count"></div>
     `;
     
-    // 如果不是结构标注模式，添��事件��听器
+    // 如果不是结构标注模式，添加事件监听器
     if (!isStructureMode) {
         const editableDiv = document.getElementById('editable-result');
         if (editableDiv) {
@@ -1804,7 +1802,7 @@ function addEntityType() {
         // 更新侧边栏显示
         updateSidebarEntities();
         
-        // 如果当前在实体标注模式，重新渲染结果
+        // 如果当前在实体标注模式，重新���染结果
         const currentMode = document.querySelector('.nav-button.active').textContent.trim();
         if (currentMode.includes('实体标注') && annotatedText) {
             const editableDiv = document.getElementById('editable-result');
@@ -1877,47 +1875,75 @@ async function saveAnnotationResults() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         const documentId = urlParams.get('documentId');
-        if (!documentId) return;
+        if (!documentId) {
+            console.error('未找到文档ID');
+            return;
+        }
 
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+        if (!token) {
+            console.error('未找到认证token');
+            return;
+        }
+
+        // 获取当前文档的所有标注数据
+        const editableDiv = document.getElementById('editable-result');
+        const textArea = document.getElementById('text-area');
+        
+        const dataToSave = {
+            name: document.title,
+            description: '',
+            original_text: originalText,
+            annotated_text: editableDiv ? editableDiv.innerHTML : '',
+            entity_data: entityData || {},
+            relation_data: relationData || []
+        };
+
+        // 发送保存请求
+        const saveResponse = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
-            body: JSON.stringify({
-                original_text: originalText,
-                annotated_text: annotatedText,
-                entity_data: entityData,
-                relation_data: relationData
-            })
+            body: JSON.stringify(dataToSave)
         });
 
-        if (!response.ok) {
+        if (!saveResponse.ok) {
             throw new Error('保存标注结果失败');
         }
+
+        console.log('标注结果保存成功');
+        return true;
+
     } catch (error) {
         console.error('保存标注结果错误:', error);
-        alert('保存标注结果失败，请稍后重试');
+        return false;
     }
 }
 
-// 在页面加载时获取已有的标注结果
+// 加载标注结果
 async function loadAnnotationResults() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         const documentId = urlParams.get('documentId');
-        if (!documentId) return;
+        if (!documentId) {
+            console.error('未找到文档ID');
+            return;
+        }
 
         const token = localStorage.getItem('token');
+        if (!token) {
+            console.error('未找到认证token');
+            return;
+        }
+
         const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+            method: 'GET',  // 显式指定请求方法
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
-            },
-            credentials: 'include'
+            }
         });
 
         if (!response.ok) {
@@ -1925,6 +1951,13 @@ async function loadAnnotationResults() {
         }
 
         const data = await response.json();
+        
+        // 添加数据验证
+        if (!data || typeof data !== 'object') {
+            throw new Error('无效的数据格式');
+        }
+        
+        // 安全地解析JSON数据
         if (data.original_text) {
             originalText = data.original_text;
             annotatedText = data.annotated_text;
@@ -1939,15 +1972,68 @@ async function loadAnnotationResults() {
                 renderNERResult(entityData);
             }
         }
+        /*try {
+            entityData = data.entity_data || {};
+                
+            // 验证entityData格式
+            if (typeof entityData !== 'object') {
+                entityData = {};
+            }
+            
+            relationData = data.relation_data || [];
+                
+            // 验证relationData格式
+            if (!Array.isArray(relationData)) {
+                relationData = [];
+            }
+        } catch (error) {
+            console.error('数据格式错误:', error);
+            entityData = {};
+            relationData = [];
+        }
+
+        // 显示文本内容
+        const textArea = document.getElementById('text-area');
+        if (textArea) {
+            textArea.value = originalText;
+        }
+
+        // 如果有标注结果，显示标注
+        const editableDiv = document.getElementById('editable-result');
+        if (editableDiv && annotatedText) {
+            editableDiv.innerHTML = annotatedText;
+            
+            // 为已标注的实体添加事件监听器
+            const entitySpans = editableDiv.querySelectorAll('span[data-category]');
+            entitySpans.forEach(span => {
+                span.addEventListener('contextmenu', function(event) {
+                    handleEntityClick(this);
+                    event.preventDefault();
+                });
+            });
+        }
+        */
+        // 更新侧边栏
+        //updateSidebarEntities();
+
     } catch (error) {
         console.error('加载标注结果错误:', error);
+        alert('加载标注结果失败，请稍后重试');
     }
 }
 
 // 在页面加载完成后调用
 document.addEventListener('DOMContentLoaded', () => {
-    // ... 现有代码 ...
     loadAnnotationResults();
+
+    // 在页面关闭或刷新前保存
+    window.addEventListener('beforeunload', async (event) => {
+        event.preventDefault();
+        event.returnValue = ''; // 显示确认对话框
+        
+        // 保存标注结果
+        await saveAnnotationResults();
+    });
 });
 
 // 添加返回文件管理页面的函数
