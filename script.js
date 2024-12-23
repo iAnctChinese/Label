@@ -1013,6 +1013,7 @@ function returnToEntityAnnotation() {
         // 如果已经进行过实体标注（通过检查是否存在实体数据）
         if (Object.values(entityData).some(arr => arr.length > 0)) {
             // 启用文本���择功能
+            // 启用文本选择功能
             enableTextSelection(editableDiv);
             
             // 为已标注的实体添加右键菜单事件
@@ -1256,6 +1257,16 @@ async function autoRecognize() {
         if (currentMode.includes('结构标注')) {
             // 结构标注页面 - 添加标点符号
             const text = document.getElementById('text-area').value;
+            const editableDiv = document.getElementById('editable-result');
+            if (!editableDiv) {
+                alert('找不到文本输入区域');
+                return;
+            }
+            
+            // 确保文本框是可编辑的
+            editableDiv.contentEditable = 'true';
+            
+            const text = editableDiv.innerText;
             if (!text.trim()) {
                 alert('请先输入文本内容');
                 return;
@@ -1265,13 +1276,15 @@ async function autoRecognize() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
+                credentials: 'include',
                 body: JSON.stringify({ text: text })
             });
             
             const data = await response.json();
             if (response.ok) {
-                document.getElementById('text-area').value = data.text;
+                editableDiv.innerText = data.text;
                 updateWordCount(); // 更新字数统计
             } else {
                 throw new Error(data.error || '添加标点符号失败');
@@ -1707,8 +1720,9 @@ function showPersonRoute(person) {
 
                 // 创建标记
                 const marker = new BMap.Marker(point);
-                const label = new BMap.Label(`${index + 1}. ${location.name}`, {
-                    offset: new BMap.Size(20, -10)
+                const label = new BMap.Label(location.name, {
+                    position: point,
+                    offset: new BMap.Size(20, -20)
                 });
                 marker.setLabel(label);
                 
@@ -1802,7 +1816,7 @@ function addEntityType() {
         // 更新侧边栏显示
         updateSidebarEntities();
         
-        // 如果当前在实体标注模式，重新���染结果
+        // 如果当前在实体标注模式，重新渲染结果
         const currentMode = document.querySelector('.nav-button.active').textContent.trim();
         if (currentMode.includes('实体标注') && annotatedText) {
             const editableDiv = document.getElementById('editable-result');
@@ -1891,8 +1905,6 @@ async function saveAnnotationResults() {
         const textArea = document.getElementById('text-area');
         
         const dataToSave = {
-            name: document.title,
-            description: '',
             original_text: originalText,
             annotated_text: editableDiv ? editableDiv.innerHTML : '',
             entity_data: entityData || {},
@@ -2023,9 +2035,22 @@ async function loadAnnotationResults() {
 }
 
 // 在页面加载完成后调用
-document.addEventListener('DOMContentLoaded', () => {
-    loadAnnotationResults();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadAnnotationResults();
+    
+    // 获取结构标注按钮并模拟点击
+    const structureButton = document.querySelector('.nav-button');  // 第一个导航按钮（结构标注）
+    if (structureButton) {
+        // 触发实际的点击事件
+        structureButton.dispatchEvent(new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        }));
+    }
 
+
+    
     // 在页面关闭或刷新前保存
     window.addEventListener('beforeunload', async (event) => {
         event.preventDefault();

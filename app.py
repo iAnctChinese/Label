@@ -33,7 +33,7 @@ def register():
             return jsonify({"error": "所有字段都是必填的"}), 400
             
         # 密码加密
-        hashed_password = generate_password_hash(password)
+        hashed_password = generate_password_hash(password, method='scrypt')
         
         db = get_db()
         cursor = db.cursor()
@@ -368,9 +368,6 @@ def handle_document(document_id):
             if not document:
                 return jsonify({"error": "文档不存在或无权访问"}), 404
                 
-            # 数据验证
-            if not data.get('name'):
-                return jsonify({"error": "文档名称不能为空"}), 400
                 
             try:
                 # 开始事务
@@ -378,17 +375,13 @@ def handle_document(document_id):
                 
                 cursor.execute('''
                     UPDATE documents 
-                    SET name = ?, 
-                        description = ?, 
-                        original_text = ?,
+                    SET original_text = ?,
                         annotated_text = ?,
                         entity_data = ?,
                         relation_data = ?,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
-                ''', (data.get('name'), 
-                      data.get('description'), 
-                      data.get('original_text'),
+                ''', (data.get('original_text'),
                       data.get('annotated_text'),
                       json.dumps(data.get('entity_data', {})),
                       json.dumps(data.get('relation_data', [])),
