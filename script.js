@@ -1012,7 +1012,6 @@ function returnToEntityAnnotation() {
         
         // 如果已经进行过实体标注（通过检查是否存在实体数据）
         if (Object.values(entityData).some(arr => arr.length > 0)) {
-            // 启用文本���择功能
             // 启用文本选择功能
             enableTextSelection(editableDiv);
             
@@ -1256,7 +1255,6 @@ async function autoRecognize() {
     try {
         if (currentMode.includes('结构标注')) {
             // 结构标注页面 - 添加标点符号
-            const text = document.getElementById('text-area').value;
             const editableDiv = document.getElementById('editable-result');
             if (!editableDiv) {
                 alert('找不到文本输入区域');
