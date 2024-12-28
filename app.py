@@ -15,7 +15,7 @@ CORS(app, supports_credentials=True)
 app.secret_key = os.urandom(24)  # 用于session加密
 JWT_SECRET = "your-secret-key"  # JWT密钥
 # 初始化 ZhipuAI 客户端
-API_KEY = "c990f03ea0d38bae0ce65801ff8203de.LYIXn4VC9CK6ABer"  # 替换为你的实际 API Key
+API_KEY = "c521ed99726c53c5007df0e48f7e9af6.8vEDNOcCGq64QYdG"  # 替换为你的实际 API Key
 client = ZhipuAI(api_key=API_KEY)
 # 初始化数据库
 init_db()
@@ -722,10 +722,12 @@ def add_punctuation():
             return jsonify({"error": "Text input is required"}), 400
             
         prompt = f"""
-        请为以下文本添加标点符号，使其更易读。要求：
+        请为以下文本添加标点符号和分段。要求：
         1. 保持原文的完整性，不要改变文字内容
-        2. 只添加句号、逗号、顿号、问号和感叹号等基本标点
-        3. 直接返回添加好标点的文本，不要有任何解释说明
+        2. 只添加句号、逗号、顿号、问号和感叡号等基本标点
+        3. 根据内容合理分段，每段开头空两个汉字宽度（使用全角空格）
+        4. 直接返回处理好的文本，不要有任何解释说明
+        5. 段落之间用换行符分隔
         
         文本：{text}
         """
@@ -738,6 +740,11 @@ def add_punctuation():
         )
         
         result = response.choices[0].message.content.strip()
+        # 使用全角空格（相当于一个汉字宽度）
+        paragraphs = result.split('\n')
+        formatted_paragraphs = ['　　' + p.strip() for p in paragraphs if p.strip()]
+        result = '\n'.join(formatted_paragraphs)
+        
         return jsonify({"text": result}), 200
         
     except Exception as e:

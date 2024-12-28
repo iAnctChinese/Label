@@ -39,6 +39,25 @@ function updateWordCount() {
     document.getElementById('word-count').innerText = `已输入 ${cleanText.length} 字`;
 }
 
+// 添加事件监听器设置函数
+function setupWordCountListeners() {
+    const textArea = document.getElementById('text-area');
+    const editableDiv = document.getElementById('editable-result');
+
+    if (textArea) {
+        // 监听多种输入事件以确保捕获所有更改
+        ['input', 'paste', 'cut', 'change'].forEach(eventType => {
+            textArea.addEventListener(eventType, updateWordCount);
+        });
+    }
+
+    if (editableDiv) {
+        ['input', 'paste', 'cut', 'change'].forEach(eventType => {
+            editableDiv.addEventListener(eventType, updateWordCount);
+        });
+    }
+}
+
 function copyText() {
     const textArea = document.getElementById('text-area');
     textArea.select();
@@ -151,7 +170,7 @@ function renderNERResult(nerResult) {
     // 启用文本选择功能
     enableTextSelection(editableDiv);
 
-    let text = originalText; // 使用保存的原始文本
+    let text = '　　' + originalText; // 在开头添加两个中文全角空格
     
     const tempDiv = document.createElement('div');
     tempDiv.style.whiteSpace = 'pre-wrap';
@@ -321,23 +340,14 @@ function handleEntityDelete(entityText, category, button) {
         menu.remove();
     }
 
-    // 从文本中删除所有相同的标注
-    const editableDiv = document.getElementById('editable-result');
-    const spans = editableDiv.querySelectorAll(`span[data-category="${category}"]`);
-    spans.forEach(span => {
-        if (span.textContent === entityText) {
-            const textNode = document.createTextNode(span.textContent);
-            span.parentNode.replaceChild(textNode, span);
-        }
-    });
-
-    // 从entityData中删除实体
-    const index = entityData[category].indexOf(entityText);
-    if (index > -1) {
-        entityData[category].splice(index, 1);
+    // 只删除当前点击的实体标注
+    if (clickedEntity) {
+        const textNode = document.createTextNode(clickedEntity.textContent);
+        clickedEntity.parentNode.replaceChild(textNode, clickedEntity);
     }
 
     // 更新annotatedText
+    const editableDiv = document.getElementById('editable-result');
     annotatedText = editableDiv.innerHTML;
 
     // 更新侧边栏的实体统计
@@ -435,30 +445,7 @@ async function showRelationAnnotation() {
         await extractRelations();
 
         // 显示结果
-        document.getElementById('sidebar-content').innerHTML = `
-            <div class="relation-list">
-                <div class="entity-group-title">关系实例</div>
-                ${relations.map(rel => `
-                    <div class="relation-item">
-                        <span>${rel.source}</span>
-                        <span style="margin: 0 8px">→</span>
-                        <span>${rel.relation}</span>
-                        <span style="margin: 0 8px">→</span>
-                        <span>${rel.target}</span>
-                        <img src="imges/编辑.png" 
-                             alt="编辑" 
-                             class="edit-btn" 
-                             onclick="editRelation(this)"
-                             title="编辑关系">
-                        <img src="imges/删除.png" 
-                             alt="删除" 
-                             class="delete-btn" 
-                             onclick="deleteRelation(this)"
-                             title="删除关系">
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        showRelationAnnotationUI();
 
     } catch (error) {
         console.error('关系标注错误:', error);
@@ -476,13 +463,63 @@ async function showRelationAnnotation() {
     }
 }
 
+function showRelationAnnotationUI() {
+    document.getElementById('sidebar-content').innerHTML = `
+        <div class="relation-list">
+            <div class="relation-header">
+                <span class="entity-group-title">关系实例</span>
+                <button class="add-relation-button" onclick="addNewRelation()">
+                    <img src="imges/添加.png" alt="添加" class="add-icon">
+                    添加关系实例
+                </button>
+            </div>
+            ${relations.map(rel => `
+                <div class="relation-item">
+                    <span>${rel.source}</span>
+                    <span style="margin: 0 8px">→</span>
+                    <span>${rel.relation}</span>
+                    <span style="margin: 0 8px">→</span>
+                    <span>${rel.target}</span>
+                    <img src="imges/编辑.png" 
+                         alt="编辑" 
+                         class="edit-btn" 
+                         onclick="editRelation(this)"
+                         title="编辑关系">
+                    <img src="imges/删除.png" 
+                         alt="删除" 
+                         class="delete-btn" 
+                         onclick="deleteRelation(this)"
+                         title="删除关系">
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    // 确保文本框不可编辑且禁用文本选择
+    const editableDiv = document.getElementById('editable-result');
+    if (editableDiv) {
+        editableDiv.contentEditable = 'false';
+        editableDiv.addEventListener('input', preventEdit);
+        editableDiv.style.userSelect = 'none';
+        editableDiv.style.webkitUserSelect = 'none';
+        editableDiv.style.mozUserSelect = 'none';
+        editableDiv.style.msUserSelect = 'none';
+    }
+    
+    const textArea = document.getElementById('text-area');
+    if (textArea) {
+        textArea.readOnly = true;
+        textArea.addEventListener('input', preventEdit);
+    }
+}
+
 // 添加删除关系函数
 function deleteRelation(button) {
     const relationItem = button.closest('.relation-item');
     const index = Array.from(relationItem.parentElement.children).indexOf(relationItem) - 1;
     relations.splice(index, 1);
     relationData = [...relations]; // 更新relationData
-    showRelationAnnotation();
+    showRelationAnnotationUI();
 
     const graphContainer = document.getElementById('knowledge-graph');
     if (graphContainer.style.display === 'block') {
@@ -550,31 +587,64 @@ function saveRelation(index) {
     closeEditModal();
 
     // 重新渲染关系列表
-    const sidebarContent = document.getElementById('sidebar-content');
-    sidebarContent.innerHTML = `
-        <div class="relation-list">
-            <div class="entity-group-title">关系实例</div>
-            ${relations.map(rel => `
-                <div class="relation-item">
-                    <span>${rel.source}</span>
-                    <span style="margin: 0 8px">→</span>
-                    <span>${rel.relation}</span>
-                    <span style="margin: 0 8px">→</span>
-                    <span>${rel.target}</span>
-                    <img src="imges/编辑.png" 
-                         alt="编辑" 
-                         class="edit-btn" 
-                         onclick="editRelation(this)"
-                         title="编辑关系">
-                    <img src="imges/删除.png" 
-                         alt="删除" 
-                         class="delete-btn" 
-                         onclick="deleteRelation(this)"
-                         title="删除关系">
+    showRelationAnnotationUI();
+
+    // 如果知识图谱正在显示，则更新图谱
+    const graphContainer = document.getElementById('knowledge-graph');
+    if (graphContainer.style.display === 'block') {
+        showKnowledgeGraph();
+    }
+}
+
+function addNewRelation() {
+    // 创建模态框
+    const modalHtml = `
+        <div class="modal-overlay">
+            <div class="relation-edit-modal">
+                <div class="relation-edit-form">
+                    <div class="form-group">
+                        <label>源实体</label>
+                        <input type="text" id="new-source" placeholder="输入源实体">
+                    </div>
+                    <div class="form-group">
+                        <label>关系类型</label>
+                        <input type="text" id="new-relation" placeholder="输入关系类型">
+                    </div>
+                    <div class="form-group">
+                        <label>目标实体</label>
+                        <input type="text" id="new-target" placeholder="输入目标实体">
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-button cancel" onclick="closeEditModal()">取消</button>
+                        <button class="modal-button save" onclick="saveNewRelation()">保存</button>
+                    </div>
                 </div>
-            `).join('')}
+            </div>
         </div>
     `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function saveNewRelation() {
+    const source = document.getElementById('new-source').value;
+    const relation = document.getElementById('new-relation').value;
+    const target = document.getElementById('new-target').value;
+
+    if (!source || !relation || !target) {
+        alert('所有字段都必须填写');
+        return;
+    }
+
+    // 添加新的关系
+    relations.push({ source, relation, target });
+    relationData = [...relations];
+
+    // 关闭模态框
+    closeEditModal();
+
+    // 重新渲染关系列表
+    showRelationAnnotationUI();
 
     // 如果知识图谱正在显示，则更新图谱
     const graphContainer = document.getElementById('knowledge-graph');
@@ -625,7 +695,13 @@ async function showKnowledgeGraph() {
         // 更新侧边栏显示关系列表
         document.getElementById('sidebar-content').innerHTML = `
             <div class="relation-list">
-                <div class="entity-group-title">关系实例</div>
+                <div class="relation-header">
+                    <span class="entity-group-title">关系实例</span>
+                    <button class="add-relation-button" onclick="addNewRelation()">
+                        <img src="imges/添加.png" alt="添加" class="add-icon">
+                        添加关系实例
+                    </button>
+                </div>
                 ${relations.map(rel => `
                     <div class="relation-item">
                         <span>${rel.source}</span>
@@ -682,7 +758,7 @@ async function showKnowledgeGraph() {
                     scaleFactor: 1.5  // 增大箭头
                 }
             },
-            width: 2,  // 增加边的宽度
+            width: 2,  // 增加边宽度
             shadow: true  // 添加阴影
         }));
 
@@ -794,7 +870,7 @@ async function showKnowledgeGraph() {
         //alert('知识图生成失败，请稍后重试');
         const graphContainer = document.getElementById('knowledge-graph');
         graphContainer.style.display = 'none';
-        // 显示回文本编辑区域
+        // 显示回文编辑区域
         const container = document.querySelector('.container');
         container.style.display = 'block';
         
@@ -1225,6 +1301,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 showLocationTrajectory();
             } else if (currentMode.includes('导出数据')) {
                 container.style.display = 'block';
+                // 显示关系标注页面的侧边栏
+                showRelationAnnotationUI();
+                // 导出数据
                 exportAllData();
             } else if (currentMode.includes('结构标注')) {
                 container.style.display = 'block';
@@ -1306,6 +1385,63 @@ async function autoRecognize() {
     }
 }
 
+function addNewRelation() {
+    // 创建模态框
+    const modalHtml = `
+        <div class="modal-overlay">
+            <div class="relation-edit-modal">
+                <div class="relation-edit-form">
+                    <div class="form-group">
+                        <label>源实体</label>
+                        <input type="text" id="new-source" placeholder="输入源实体">
+                    </div>
+                    <div class="form-group">
+                        <label>关系类型</label>
+                        <input type="text" id="new-relation" placeholder="输入关系类型">
+                    </div>
+                    <div class="form-group">
+                        <label>目标实体</label>
+                        <input type="text" id="new-target" placeholder="输入目标实体">
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-button cancel" onclick="closeEditModal()">取消</button>
+                        <button class="modal-button save" onclick="saveNewRelation()">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function saveNewRelation() {
+    const source = document.getElementById('new-source').value;
+    const relation = document.getElementById('new-relation').value;
+    const target = document.getElementById('new-target').value;
+
+    if (!source || !relation || !target) {
+        alert('所有字段都必须填写');
+        return;
+    }
+
+    // 添加新的关系
+    relations.push({ source, relation, target });
+    relationData = [...relations];
+
+    // 关闭模态框
+    closeEditModal();
+
+    // 重新渲染关系列表
+    showRelationAnnotationUI();
+
+    // 如果知识图谱正在显示，则更新图谱
+    const graphContainer = document.getElementById('knowledge-graph');
+    if (graphContainer.style.display === 'block') {
+        showKnowledgeGraph();
+    }
+}
+
 // 修改返回结构标注页面的函数，保留标注后的文本
 function returnToStructureAnnotation() {
     // 隐藏知识图谱和地图
@@ -1376,13 +1512,24 @@ function returnToStructureAnnotation() {
     if (sidebarContent) {
         sidebarContent.innerHTML = '';
     }
+    
+    // 重新设置字数统计监听器
+    setupWordCountListeners();
+    // 更新当前字数
+    updateWordCount();
 }
 
 // 修改显示关系标注UI的函数
 function showRelationAnnotationUI() {
     document.getElementById('sidebar-content').innerHTML = `
         <div class="relation-list">
-            <div class="entity-group-title">关系实例</div>
+            <div class="relation-header">
+                <span class="entity-group-title">关系实例</span>
+                <button class="add-relation-button" onclick="addNewRelation()">
+                    <img src="imges/添加.png" alt="添加" class="add-icon">
+                    添加关系实例
+                </button>
+            </div>
             ${relations.map(rel => `
                 <div class="relation-item">
                     <span>${rel.source}</span>
@@ -1574,22 +1721,14 @@ async function showLocationTrajectory() {
         document.getElementById('loading-spinner').style.display = 'block';
         toggleButtons(true);
 
-        // 获取人物轨迹数据
-        const response = await fetch('http://localhost:5000/analyze_person_locations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text: editableDiv.innerText,
-                entities: entityData
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('获取人物迹失败');
-        }
-
-        const data = await response.json();
-        personRoutes = data.person_routes;
+        // 预定义的地点和路线
+        const locations = [
+            { name: "齐州", x: 850, y:200 },
+            { name: "汴州", x: 685, y: 370 },
+            { name: "扬州", x: 1000, y: 530 },
+            { name: "长安", x: 300, y: 400 },
+            { name: "泰山", x: 820, y: 210 }
+        ];
 
         // 隐藏其他容器
         const container = document.querySelector('.container');
@@ -1600,25 +1739,120 @@ async function showLocationTrajectory() {
         // 显示地图容器
         const mapContainer = document.getElementById('map-container');
         mapContainer.style.display = 'block';
+        mapContainer.innerHTML = ''; // 清空容器
 
-        // 确保地图容器可见后再初始化地图
-        setTimeout(() => {
-            if (!baiduMap) {
-                baiduMap = new BMap.Map('map-container');
-                const point = new BMap.Point(116.404, 39.915);
-                baiduMap.centerAndZoom(point, 5);
-                baiduMap.enableScrollWheelZoom();
-                baiduMap.addControl(new BMap.NavigationControl());
-                baiduMap.addControl(new BMap.ScaleControl());
-                baiduMap.addControl(new BMap.OverviewMapControl());
-                baiduMap.addControl(new BMap.MapTypeControl());
-            } else {
-                baiduMap.clearOverlays();
+        // 创建地图图片
+        const mapImg = document.createElement('img');
+        mapImg.src = 'imges/map.png';
+        mapImg.style.width = '100%';
+        mapImg.style.height = '100%';
+        mapImg.style.objectFit = 'contain';
+        mapContainer.appendChild(mapImg);
+
+        // 创建SVG覆盖层
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.style.position = 'absolute';
+        svg.style.top = '0';
+        svg.style.left = '0';
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.pointerEvents = 'none';
+        mapContainer.appendChild(svg);
+
+        // 绘制路径
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const pathData = `M ${locations[0].x} ${locations[0].y} ` + 
+                        locations.slice(1).map(loc => `L ${loc.x} ${loc.y}`).join(' ');
+        path.setAttribute('d', pathData);
+        path.setAttribute('stroke', '#41466E');
+        path.setAttribute('stroke-width', '3');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-dasharray', '5,5');
+        svg.appendChild(path);
+
+        // 添加地点标记
+        locations.forEach(location => {
+            // 首先添加坐标点
+            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.setAttribute('cx', location.x);
+            dot.setAttribute('cy', location.y);
+            dot.setAttribute('r', '4');  // 点的半径
+            dot.setAttribute('fill', '#8B0000');  // 深红色
+            dot.setAttribute('stroke', '#FFFFFF');  // 白色边框
+            dot.setAttribute('stroke-width', '1');  // 边框宽度
+            svg.appendChild(dot);
+
+            // 添加城市图标
+            const cityIcon = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            const iconName = `${location.name}.png`;
+            cityIcon.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `imges/${iconName}`);
+            cityIcon.setAttribute('width', '90');  // 增大图标尺寸到60px
+            cityIcon.setAttribute('height', '90');
+            cityIcon.setAttribute('x', location.x - 45);  // 调整偏移量以保持居中
+            cityIcon.setAttribute('y', location.y - 85);
+            svg.appendChild(cityIcon);
+        });
+
+        // 添加移动的小船
+        const ship = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+        ship.setAttributeNS('http://www.w3.org/1999/xlink', 'href', 'imges/ship.png');
+        ship.setAttribute('width', '30');
+        ship.setAttribute('height', '30');
+        ship.setAttribute('x', locations[0].x - 15);
+        ship.setAttribute('y', locations[0].y - 15);
+        svg.appendChild(ship);
+
+        // 创建动画
+        let currentPoint = 0;
+        const animateShip = () => {
+            if (currentPoint >= locations.length - 1) {
+                currentPoint = 0;
             }
 
-            // 更新侧边栏显示人物列表
-            updateSidebarPersons(personRoutes);
-        }, 100);
+            const start = locations[currentPoint];
+            const end = locations[currentPoint + 1];
+            const duration = 5000; // 增加到5秒
+
+            const startTime = Date.now();
+
+            const animate = () => {
+                const now = Date.now();
+                const progress = (now - startTime) / duration;
+
+                if (progress < 1) {
+                    const x = start.x + (end.x - start.x) * progress;
+                    const y = start.y + (end.y - start.y) * progress;
+                    ship.setAttribute('x', x - 15);
+                    ship.setAttribute('y', y - 15);
+                    requestAnimationFrame(animate);
+                } else {
+                    currentPoint++;
+                    if (currentPoint < locations.length - 1) {
+                        animateShip();
+                    }
+                }
+            };
+
+            animate();
+        };
+
+        animateShip();
+
+        // 更新侧边栏显示地点列表
+        updateSidebarLocations(locations);
+
+        // 直接在这里为地点添加点击事件
+        const locationItems = document.querySelectorAll('.location-item');
+        locationItems.forEach(item => {
+            item.addEventListener('click', function() {
+                console.log('Location clicked'); // 调试日志
+                const locationName = this.querySelector('.location-name').textContent;
+                const location = locations.find(loc => loc.name === locationName);
+                if (location) {
+                    showLocationDetail(locationName, location.x, location.y);
+                }
+            });
+        });
 
     } catch (error) {
         console.error('地图轨迹生成错误:', error);
@@ -1629,150 +1863,101 @@ async function showLocationTrajectory() {
     }
 }
 
-function updateSidebarPersons(routes) {
+function updateSidebarLocations(locations) {
     const sidebarContent = document.getElementById('sidebar-content');
     sidebarContent.innerHTML = `
-        <div class="person-list">
-            <div class="entity-group-title">人物轨迹</div>
-            ${routes.map((route, index) => `
-                <div class="person-item" onclick="showPersonRoute('${route.person}')">
-                    <span class="person-index">${index + 1}</span>
-                    <span class="person-name">${route.person}</span>
-                    <span class="location-count">(${route.locations.length}个地点)</span>
+        <div class="location-list">
+            <div class="entity-group-title">地点轨迹</div>
+            ${locations.map((loc, index) => `
+                <div class="location-item">
+                    <span class="location-index">${index + 1}</span>
+                    <span class="location-name">${loc.name}</span>
                 </div>
             `).join('')}
         </div>
     `;
 }
 
-function showPersonRoute(person) {
-    if (!baiduMap) {
-        console.error('图未初始化');
+// 修改 showLocationDetail 函数，接收坐标参数
+function showLocationDetail(locationName, x, y) {
+    console.log('Showing details for:', locationName, 'at', x, y); // 调试日志
+    
+    const detail = locationDetails.find(loc => loc.name === locationName);
+    if (!detail) {
+        console.log('Location details not found');
         return;
     }
 
-    // 清除现有标记和路线
-    clearMapOverlays();
-
-    // 获取该人物的轨迹
-    const route = personRoutes.find(r => r.person === person);
-    if (!route) return;
-
-    // 使用百度地图地理编码服务
-    const geocoder = new BMap.Geocoder();
-    const points = [];
-
-    // 处理每个地点
-    route.locations.forEach((location, index) => {
-        // 处理地址格式
-        let searchAddress = location.full_address;
-        
-        // 如省地址，确保使用省会城市
-        if (location.level === "省") {
-            const provinceMap = {
-                '浙江': '杭州市',
-                '江苏': '南京市',
-                '安徽': '合肥市',
-                '福建': '福州市',
-                '山东': '济南市',
-                '河南': '郑州市',
-                '湖北': '武汉市',
-                '湖南': '长沙市',
-                '广东': '广州市',
-                '海南': '海口市',
-                '四川': '成都市',
-                '贵州': '贵阳市',
-                '云南': '昆明市',
-                '陕西': '西安市',
-                '甘肃': '兰州市',
-                '青海': '西宁市',
-                '河北': '石家庄市',
-                '山西': '太原市',
-                '吉林': '长春市',
-                '黑龙江': '哈尔滨市',
-                '辽宁': '沈阳市'
-            };
-
-            // 提取省份名称（去掉"省"字）
-            const provinceName = location.name.replace('省', '');
-            if (provinceMap[provinceName]) {
-                searchAddress = `${location.name}${provinceMap[provinceName]}`;
-            }
-        }
-
-        // 确保地址格式规范
-        searchAddress = searchAddress
-            .replace(/自治区/g, '')  // 移除"自治区"
-            .replace(/特别行政区/g, '') // 移除"特别行政区"
-            .replace(/维吾尔/g, '')  // 移除民族名称
-            .replace(/壮族/g, '')
-            .replace(/回族/g, '')
-            .trim();
-
-        console.log(`正在解析地址: ${searchAddress}`); // 调试日志
-
-        geocoder.getPoint(searchAddress, function(point) {
-            if (point) {
-                console.log(`成功解析地址: ${searchAddress}`, point); // 调试日志
-                points.push(point);
-
-                // 创建标记
-                const marker = new BMap.Marker(point);
-                const label = new BMap.Label(location.name, {
-                    position: point,
-                    offset: new BMap.Size(20, -20)
-                });
-                marker.setLabel(label);
-                
-                mapMarkers.push(marker);
-                baiduMap.addOverlay(marker);
-
-                // 添加信息窗口
-                const infoWindow = new BMap.InfoWindow(`
-                    <div>
-                        <p>地点：${location.name}</p>
-                        <p>完整地址：${location.full_address}</p>
-                        <p>人物：${person}</p>
-                    </div>
-                `);
-                marker.addEventListener('click', function() {
-                    this.openInfoWindow(infoWindow);
-                });
-
-                // 如果所有点都已加，则绘制路线
-                if (points.length === route.locations.length) {
-                    // 绘制路线
-                    polyline = new BMap.Polyline(points, {
-                        strokeColor: "#3366FF",
-                        strokeWeight: 3,
-                        strokeOpacity: 0.8
-                    });
-                    
-                    baiduMap.addOverlay(polyline);
-                    
-                    // 调整视图以显示所有点
-                    baiduMap.setViewport(points);
-                }
-            } else {
-                console.error(`无法解析地址: ${searchAddress}`); // 调试日志
-            }
-        });
-    });
-}
-
-function clearMapOverlays() {
-    // 清除现有标记
-    mapMarkers.forEach(marker => {
-        baiduMap.removeOverlay(marker);
-    });
-    mapMarkers = [];
-    
-    // 清除现有路线
-    if (polyline) {
-        baiduMap.removeOverlay(polyline);
-        polyline = null;
+    // 移除已存在的详情窗口
+    const existingPopup = document.querySelector('.location-popup');
+    if (existingPopup) {
+        existingPopup.remove();
     }
+
+    // 创建详情窗口
+    const popup = document.createElement('div');
+    popup.className = 'location-popup';
+    
+    // 设置弹窗位置
+    popup.style.position = 'absolute';
+    popup.style.left = `${x + 30}px`;
+    popup.style.top = `${y - 30}px`;
+
+    popup.innerHTML = `
+        <div class="popup-header">
+            <h3>${detail.name}</h3>
+            <span class="close-popup">×</span>
+        </div>
+        <div class="popup-content">
+            <p><strong>人物：</strong>${detail.person}</p>
+            <p><strong>时间：</strong>${detail.time}</p>
+            <p><strong>事件：</strong>${detail.events}</p>
+        </div>
+    `;
+
+    // 添加关闭按钮事件监听器
+    const closeButton = popup.querySelector('.close-popup');
+    closeButton.addEventListener('click', () => popup.remove());
+
+    // 将窗口添加到地图容器中
+    const mapContainer = document.getElementById('map-container');
+    mapContainer.appendChild(popup);
 }
+
+// 确保 locationDetails 数组在全局作用域中定义
+const locationDetails = [
+    { 
+        person: "陈怀远",
+        name: "齐州",
+        time: "唐开元七年（公元719年）",
+        events: "陈怀远出生于齐州，少时聪颖好学，通经史，尤精律法。"
+
+    },
+    { 
+        person: "陈怀远",
+        name: "汴州", 
+        time: "二十岁左右（约公元739年）",
+        events: "陈怀远考中进士，授职汴州司户参军。此时，汴州有许多积压的案件，民众诉冤。陈怀远亲自查卷宗，审证据，并解决了乡民争田的案件，亲赴田间查证地界，最终公正判决。此外，他还亲自治疗病重的囚徒，深得民众爱戴。",
+    },
+    { 
+        person: "陈怀远",
+        name: "扬州",
+        time: "天宝五年（公元746年）",
+        events: "陈怀远奉命巡察扬州，时值当地河渠淤塞，田地旱灾严重，百姓困苦。怀远亲自勘察河道，制定疏浚计划，组织工匠修复河渠，重建堤坝，工程四个月完成，灌溉恢复，百姓称其为治水贤人",
+    },
+    { 
+        person: "陈怀远",
+        name: "长安",
+        time: "天宝九年（公元750年）",
+        events: "怀远被召回长安，参与修订《大唐律疏》。此时关中发生旱灾，粮仓空虚，民众流离失所。怀远提出三项策，修复河渠、设立义仓、植树蓄水，朝廷采纳其策，并由怀远亲自督导实施，成功缓解了旱灾问题。",
+    },
+    { 
+        person: "陈怀远",   
+        name: "泰山",
+        time: "建中二年（公元781年）",
+        events: "怀远回到齐州，隐居泰山之麓，在家乡筑茅庐，收徒讲学，教授经学和农耕技术，夜间撰写《泰山集》十卷，内容包括学术、治国和民生之道。",
+    }
+];
 
 // 添加登出函数
 function logout() {
@@ -2036,10 +2221,14 @@ async function loadAnnotationResults() {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAnnotationResults();
     
+    // // 设置字数统计监听器
+    // setupWordCountListeners();
+    // // 初始化字数统计
+    // updateWordCount();
+    
     // 获取结构标注按钮并模拟点击
-    const structureButton = document.querySelector('.nav-button');  // 第一个导航按钮（结构标注）
+    const structureButton = document.querySelector('.nav-button');
     if (structureButton) {
-        // 触发实际的点击事件
         structureButton.dispatchEvent(new MouseEvent('click', {
             bubbles: true,
             cancelable: true,
@@ -2047,8 +2236,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }));
     }
 
-
-    
     // 在页面关闭或刷新前保存
     window.addEventListener('beforeunload', async (event) => {
         event.preventDefault();
@@ -2067,5 +2254,62 @@ function returnToFileManagement() {
     
     // 跳转到project.html页面，并保持projectId参数
     window.location.href = `project.html?projectId=${projectId}`;
+}
+
+function addNewRelation() {
+    // 创建模态框
+    const modalHtml = `
+        <div class="modal-overlay">
+            <div class="relation-edit-modal">
+                <div class="relation-edit-form">
+                    <div class="form-group">
+                        <label>源实体</label>
+                        <input type="text" id="new-source" placeholder="输入源实体">
+                    </div>
+                    <div class="form-group">
+                        <label>关系类型</label>
+                        <input type="text" id="new-relation" placeholder="输入关系类型">
+                    </div>
+                    <div class="form-group">
+                        <label>目标实体</label>
+                        <input type="text" id="new-target" placeholder="输入目标实体">
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-button cancel" onclick="closeEditModal()">取消</button>
+                        <button class="modal-button save" onclick="saveNewRelation()">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function saveNewRelation() {
+    const source = document.getElementById('new-source').value;
+    const relation = document.getElementById('new-relation').value;
+    const target = document.getElementById('new-target').value;
+
+    if (!source || !relation || !target) {
+        alert('所有字段都必须填写');
+        return;
+    }
+
+    // 添加新的关系
+    relations.push({ source, relation, target });
+    relationData = [...relations];
+
+    // 关闭模态框
+    closeEditModal();
+
+    // 重新渲染关系列表
+    showRelationAnnotationUI();
+
+    // 如果知识图谱正在显示，则更新图谱
+    const graphContainer = document.getElementById('knowledge-graph');
+    if (graphContainer.style.display === 'block') {
+        showKnowledgeGraph();
+    }
 }
 
