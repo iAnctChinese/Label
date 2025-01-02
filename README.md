@@ -39,7 +39,7 @@
 
 ## 技术栈
 
-- **前端**：React, Redux, CSS3
+- **前端**：Html, JS, CSS3
 - **后端**：Flask, SQLAlchemy
 - **数据库**：SQLite
 
