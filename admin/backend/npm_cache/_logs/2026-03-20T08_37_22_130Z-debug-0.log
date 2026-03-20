@@ -1,0 +1,166 @@
+0 verbose cli C:\nvm4w\nodejs\node.exe C:\nvm4w\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.6.2
+2 info using node@v25.2.1
+3 silly config load:file:C:\nvm\v25.2.1\node_modules\npm\npmrc
+4 silly config load:file:D:\桌面\new\Label\admin\backend\.npmrc
+5 silly config load:file:C:\Users\86178\.npmrc
+6 silly config load:file:D:\nodejs\node_global\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--registry" "https://registry.npmmirror.com" "--cache" "d:\\桌面\\new\\Label\\admin\\backend\\npm_cache"
+9 verbose logfile logs-max:10 dir:d:\桌面\new\Label\admin\backend\npm_cache\_logs\2026-03-20T08_37_22_130Z-
+10 verbose logfile d:\桌面\new\Label\admin\backend\npm_cache\_logs\2026-03-20T08_37_22_130Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly reify moves {}
+15 silly audit bulk request {
+15 silly audit   accepts: [ '1.3.8' ],
+15 silly audit   anymatch: [ '3.1.3' ],
+15 silly audit   'array-flatten': [ '1.1.1' ],
+15 silly audit   'balanced-match': [ '4.0.4' ],
+15 silly audit   bcryptjs: [ '2.4.3' ],
+15 silly audit   'binary-extensions': [ '2.3.0' ],
+15 silly audit   'body-parser': [ '1.20.4' ],
+15 silly audit   'brace-expansion': [ '5.0.4' ],
+15 silly audit   braces: [ '3.0.3' ],
+15 silly audit   'buffer-equal-constant-time': [ '1.0.1' ],
+15 silly audit   bytes: [ '3.1.2' ],
+15 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+15 silly audit   'call-bound': [ '1.0.4' ],
+15 silly audit   chokidar: [ '3.6.0' ],
+15 silly audit   'content-disposition': [ '0.5.4' ],
+15 silly audit   'content-type': [ '1.0.5' ],
+15 silly audit   cookie: [ '0.7.2' ],
+15 silly audit   'cookie-signature': [ '1.0.7' ],
+15 silly audit   cors: [ '2.8.6' ],
+15 silly audit   debug: [ '2.6.9', '4.4.3' ],
+15 silly audit   depd: [ '2.0.0' ],
+15 silly audit   destroy: [ '1.2.0' ],
+15 silly audit   'dunder-proto': [ '1.0.1' ],
+15 silly audit   'ecdsa-sig-formatter': [ '1.0.11' ],
+15 silly audit   'ee-first': [ '1.1.1' ],
+15 silly audit   encodeurl: [ '2.0.0' ],
+15 silly audit   'es-define-property': [ '1.0.1' ],
+15 silly audit   'es-errors': [ '1.3.0' ],
+15 silly audit   'es-object-atoms': [ '1.1.1' ],
+15 silly audit   'escape-html': [ '1.0.3' ],
+15 silly audit   etag: [ '1.8.1' ],
+15 silly audit   express: [ '4.22.1' ],
+15 silly audit   'fill-range': [ '7.1.1' ],
+15 silly audit   finalhandler: [ '1.3.2' ],
+15 silly audit   forwarded: [ '0.2.0' ],
+15 silly audit   fresh: [ '0.5.2' ],
+15 silly audit   fsevents: [ '2.3.3' ],
+15 silly audit   'function-bind': [ '1.1.2' ],
+15 silly audit   'get-intrinsic': [ '1.3.0' ],
+15 silly audit   'get-proto': [ '1.0.1' ],
+15 silly audit   'glob-parent': [ '5.1.2' ],
+15 silly audit   gopd: [ '1.2.0' ],
+15 silly audit   'has-flag': [ '3.0.0' ],
+15 silly audit   'has-symbols': [ '1.1.0' ],
+15 silly audit   hasown: [ '2.0.2' ],
+15 silly audit   'http-errors': [ '2.0.1' ],
+15 silly audit   'iconv-lite': [ '0.4.24' ],
+15 silly audit   'ignore-by-default': [ '1.0.1' ],
+15 silly audit   inherits: [ '2.0.4' ],
+15 silly audit   'ipaddr.js': [ '1.9.1' ],
+15 silly audit   'is-binary-path': [ '2.1.0' ],
+15 silly audit   'is-extglob': [ '2.1.1' ],
+15 silly audit   'is-glob': [ '4.0.3' ],
+15 silly audit   'is-number': [ '7.0.0' ],
+15 silly audit   jsonwebtoken: [ '9.0.3' ],
+15 silly audit   ms: [ '2.1.3', '2.0.0' ],
+15 silly audit   jwa: [ '2.0.1' ],
+15 silly audit   jws: [ '4.0.1' ],
+15 silly audit   'lodash.includes': [ '4.3.0' ],
+15 silly audit   'lodash.isboolean': [ '3.0.3' ],
+15 silly audit   'lodash.isinteger': [ '4.0.4' ],
+15 silly audit   'lodash.isnumber': [ '3.0.3' ],
+15 silly audit   'lodash.isplainobject': [ '4.0.6' ],
+15 silly audit   'lodash.isstring': [ '4.0.1' ],
+15 silly audit   'lodash.once': [ '4.1.1' ],
+15 silly audit   'math-intrinsics': [ '1.1.0' ],
+15 silly audit   'media-typer': [ '0.3.0' ],
+15 silly audit   'merge-descriptors': [ '1.0.3' ],
+15 silly audit   methods: [ '1.1.2' ],
+15 silly audit   mime: [ '1.6.0' ],
+15 silly audit   'mime-db': [ '1.52.0' ],
+15 silly audit   'mime-types': [ '2.1.35' ],
+15 silly audit   minimatch: [ '10.2.4' ],
+15 silly audit   negotiator: [ '0.6.3' ],
+15 silly audit   nodemon: [ '3.1.14' ],
+15 silly audit   'normalize-path': [ '3.0.0' ],
+15 silly audit   'object-assign': [ '4.1.1' ],
+15 silly audit   'object-inspect': [ '1.13.4' ],
+15 silly audit   'on-finished': [ '2.4.1' ],
+15 silly audit   parseurl: [ '1.3.3' ],
+15 silly audit   'path-to-regexp': [ '0.1.12' ],
+15 silly audit   picomatch: [ '2.3.1' ],
+15 silly audit   'proxy-addr': [ '2.0.7' ],
+15 silly audit   'pstree.remy': [ '1.1.8' ],
+15 silly audit   qs: [ '6.14.2' ],
+15 silly audit   'range-parser': [ '1.2.1' ],
+15 silly audit   'raw-body': [ '2.5.3' ],
+15 silly audit   readdirp: [ '3.6.0' ],
+15 silly audit   'safe-buffer': [ '5.2.1' ],
+15 silly audit   'safer-buffer': [ '2.1.2' ],
+15 silly audit   semver: [ '7.7.4' ],
+15 silly audit   send: [ '0.19.2' ],
+15 silly audit   'serve-static': [ '1.16.3' ],
+15 silly audit   setprototypeof: [ '1.2.0' ],
+15 silly audit   'side-channel': [ '1.1.0' ],
+15 silly audit   'side-channel-list': [ '1.0.0' ],
+15 silly audit   'side-channel-map': [ '1.0.1' ],
+15 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+15 silly audit   'simple-update-notifier': [ '2.0.0' ],
+15 silly audit   'sql.js': [ '1.14.1' ],
+15 silly audit   statuses: [ '2.0.2' ],
+15 silly audit   'supports-color': [ '5.5.0' ],
+15 silly audit   'to-regex-range': [ '5.0.1' ],
+15 silly audit   toidentifier: [ '1.0.1' ],
+15 silly audit   touch: [ '3.1.1' ],
+15 silly audit   'type-is': [ '1.6.18' ],
+15 silly audit   undefsafe: [ '2.0.5' ],
+15 silly audit   unpipe: [ '1.0.0' ],
+15 silly audit   'utils-merge': [ '1.0.1' ],
+15 silly audit   vary: [ '1.1.2' ]
+15 silly audit }
+16 http fetch POST 404 https://registry.npmmirror.com/-/npm/v1/security/advisories/bulk 99ms
+17 verbose audit error HttpErrorGeneral: 404 Not Found - POST https://registry.npmmirror.com/-/npm/v1/security/advisories/bulk - [NOT_IMPLEMENTED] /-/npm/v1/security/* not implemented yet
+17 verbose audit error     at C:\nvm\v25.2.1\node_modules\npm\node_modules\npm-registry-fetch\lib\check-response.js:103:15
+17 verbose audit error     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+17 verbose audit error     at async #getReport (C:\nvm\v25.2.1\node_modules\npm\node_modules\@npmcli\arborist\lib\audit-report.js:275:19)
+17 verbose audit error     at async AuditReport.run (C:\nvm\v25.2.1\node_modules\npm\node_modules\@npmcli\arborist\lib\audit-report.js:100:19)
+17 verbose audit error     at async Arborist.reify (C:\nvm\v25.2.1\node_modules\npm\node_modules\@npmcli\arborist\lib\arborist\reify.js:257:24)
+17 verbose audit error     at async Install.exec (C:\nvm\v25.2.1\node_modules\npm\lib\commands\install.js:150:5)
+17 verbose audit error     at async Npm.exec (C:\nvm\v25.2.1\node_modules\npm\lib\npm.js:208:9)
+17 verbose audit error     at async module.exports (C:\nvm\v25.2.1\node_modules\npm\lib\cli\entry.js:67:5) {
+17 verbose audit error   headers: [Object: null prototype] {
+17 verbose audit error     server: [ 'Tengine' ],
+17 verbose audit error     date: [ 'Fri, 20 Mar 2026 08:37:22 GMT' ],
+17 verbose audit error     'content-type': [ 'application/json' ],
+17 verbose audit error     'transfer-encoding': [ 'chunked' ],
+17 verbose audit error     connection: [ 'keep-alive' ],
+17 verbose audit error     'strict-transport-security': [ 'max-age=5184000' ],
+17 verbose audit error     via: [ 'kunlun10.cn5656[,404666]' ],
+17 verbose audit error     'timing-allow-origin': [ '*' ],
+17 verbose audit error     eagleid: [ '6f03589517739958424198885e' ],
+17 verbose audit error     'x-fetch-attempts': [ '1' ]
+17 verbose audit error   },
+17 verbose audit error   statusCode: 404,
+17 verbose audit error   code: 'E404',
+17 verbose audit error   method: 'POST',
+17 verbose audit error   uri: 'https://registry.npmmirror.com/-/npm/v1/security/advisories/bulk',
+17 verbose audit error   body: {
+17 verbose audit error     error: '[NOT_IMPLEMENTED] /-/npm/v1/security/* not implemented yet'
+17 verbose audit error   },
+17 verbose audit error   pkgid: undefined
+17 verbose audit error }
+18 silly audit error [object Object]
+19 silly audit report null
+20 verbose cwd D:\桌面\new\Label\admin\backend
+21 verbose os Windows_NT 10.0.22621
+22 verbose node v25.2.1
+23 verbose npm  v11.6.2
+24 verbose exit 0
+25 info ok

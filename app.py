@@ -502,7 +502,7 @@ def ner():
         entity_types_str = "、".join(entity_types)
         
         response = client.chat.completions.create(
-            model="glm-4",
+            model="glm-4.7-flash",
             messages=[
                 {"role": "user", "content": f"提取以下文本中的命名实体：{text}"},
                 {"role": "assistant", "content": "好的，请告诉我您需要的实体分类。"},
@@ -596,7 +596,7 @@ def extract_relations():
         """
         
         response = client.chat.completions.create(
-            model="glm-4",
+            model="glm-4.7-flash",
             messages=[
                 {"role": "user", "content": prompt}
             ]
@@ -673,7 +673,7 @@ def analyze_person_locations():
         """
         
         response = client.chat.completions.create(
-            model="glm-4",
+            model="glm-4.7-flash",
             messages=[
                 {"role": "user", "content": prompt}
             ]
@@ -733,7 +733,7 @@ def add_punctuation():
         """
         
         response = client.chat.completions.create(
-            model="glm-4",
+            model="glm-4.7-flash",
             messages=[
                 {"role": "user", "content": prompt}
             ]
